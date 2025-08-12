@@ -5,7 +5,7 @@ import { updateUserProfile } from '../services/api';
 import { User } from '../types';
 
 const ProfilePage: React.FC = () => {
-    const { user, userId, isLoading, updateUser } = useAuth(); // Adicionado updateUser
+    const { user, userId, isLoading, updateUser } = useAuth();
     const [formData, setFormData] = useState<Partial<User>>({});
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -15,8 +15,8 @@ const ProfilePage: React.FC = () => {
             setFormData({
                 name: user.name,
                 surf_level: user.surf_level,
-                goofy_regular_stance: user.goofy_regular_stance, // Alterado de stance
-                preferred_wave_direction: user.preferred_wave_direction,
+                goofy_regular_stance: user.goofy_regular_stance || 'Regular', // Garante um valor padrão
+                preferred_wave_direction: user.preferred_wave_direction || 'Both', // Garante um valor padrão
                 bio: user.bio,
             });
         }
@@ -31,15 +31,8 @@ const ProfilePage: React.FC = () => {
         if (!userId) return;
         setIsSubmitting(true);
         try {
-            // A API espera goofy_regular_stance, então garantimos que está no formato correto
-            const payload = { ...formData };
-            if (payload.goofy_regular_stance) {
-                payload.goofy_regular_stance = payload.goofy_regular_stance;
-                delete payload.goofy_regular_stance;
-            }
-
-            const response = await updateUserProfile(userId, payload);
-            updateUser(response.user); // Atualiza o usuário no contexto global
+            const response = await updateUserProfile(userId, formData);
+            updateUser(response.user);
             setMessage('Profile updated successfully!');
             setTimeout(() => setMessage(''), 3000);
         } catch (error) {
