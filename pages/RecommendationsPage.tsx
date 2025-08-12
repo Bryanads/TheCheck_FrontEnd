@@ -7,6 +7,8 @@ import { CheckIcon, ClockIcon, FilterIcon, SunIcon, WaveIcon, WindIcon } from '.
 
 const CACHE_KEY = 'thecheck_recommendations';
 
+// --- Seus componentes ScoreGauge e RecommendationCard permanecem os mesmos ---
+
 const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
     const getScoreColor = (s: number) => {
         if (s > 75) return '#22c55e'; // green-500
@@ -90,6 +92,8 @@ const RecommendationsPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [startTime, setStartTime] = useState('06:00');
+    const [endTime, setEndTime] = useState('18:00');
 
     const handleGetRecommendations = useCallback(async () => {
         if (!userId || selectedSpotIds.length === 0) {
@@ -103,12 +107,11 @@ const RecommendationsPage: React.FC = () => {
                 user_id: userId,
                 spot_ids: selectedSpotIds,
                 day_offset: dayOffset,
-                start_time: "05:00",
-                end_time: "17:00"
+                start_time: startTime,
+                end_time: endTime
             };
             const result = await getRecommendations(data);
             setRecommendations(result);
-            // Salva no cache apenas as recomendações de buscas manuais
             if (!isInitialLoad) {
                 sessionStorage.setItem(CACHE_KEY, JSON.stringify(result));
             }
@@ -118,9 +121,8 @@ const RecommendationsPage: React.FC = () => {
             setLoading(false);
             setIsInitialLoad(false);
         }
-    }, [userId, selectedSpotIds, dayOffset, isInitialLoad]);
+    }, [userId, selectedSpotIds, dayOffset, startTime, endTime, isInitialLoad]);
 
-    // Efeito 1: Carrega dados iniciais (spots, presets) e define filtros padrão
     useEffect(() => {
         if (!userId) return;
 
@@ -135,6 +137,8 @@ const RecommendationsPage: React.FC = () => {
                 if (defaultPreset) {
                     setSelectedSpotIds(defaultPreset.spot_ids);
                     setDayOffset(defaultPreset.day_offset_default);
+                    setStartTime(defaultPreset.start_time);
+                    setEndTime(defaultPreset.end_time);
                 } else if (spotsData.length > 0) {
                     setSelectedSpotIds([spotsData[0].spot_id]);
                 }
@@ -148,7 +152,6 @@ const RecommendationsPage: React.FC = () => {
         fetchInitialData();
     }, [userId]);
 
-    // Efeito 2: Busca recomendações quando os filtros são definidos pela primeira vez
     useEffect(() => {
         const cachedRecs = sessionStorage.getItem(CACHE_KEY);
         if (cachedRecs) {
@@ -157,7 +160,6 @@ const RecommendationsPage: React.FC = () => {
             return;
         }
         
-        // Se não houver cache e os filtros estiverem prontos, busca automaticamente
         if (isInitialLoad && selectedSpotIds.length > 0) {
             handleGetRecommendations();
         }
@@ -166,7 +168,7 @@ const RecommendationsPage: React.FC = () => {
     const handleSpotToggle = (spotId: number) => {
         setSelectedSpotIds(prev => {
             const newSelection = prev.includes(spotId) ? prev.filter(id => id !== spotId) : [...prev, spotId];
-            sessionStorage.removeItem(CACHE_KEY); // Limpa o cache ao mudar a seleção
+            sessionStorage.removeItem(CACHE_KEY);
             return newSelection;
         });
     };
@@ -174,17 +176,23 @@ const RecommendationsPage: React.FC = () => {
     const handlePresetApply = (preset: Preset) => {
         setSelectedSpotIds(preset.spot_ids);
         setDayOffset(preset.day_offset_default);
-        sessionStorage.removeItem(CACHE_KEY); // Limpa o cache ao aplicar preset
+        setStartTime(preset.start_time);
+        setEndTime(preset.end_time);
+        sessionStorage.removeItem(CACHE_KEY);
     };
 
     const handleDayOffsetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setDayOffset(JSON.parse(e.target.value));
-        sessionStorage.removeItem(CACHE_KEY); // Limpa o cache ao mudar os dias
+        sessionStorage.removeItem(CACHE_KEY);
     };
     
-    // Botão de busca manual
+    const handleTimeChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        setter(e.target.value);
+        sessionStorage.removeItem(CACHE_KEY);
+    }
+    
     const handleManualSearch = () => {
-        setIsInitialLoad(false); // Garante que a busca seja tratada como manual
+        setIsInitialLoad(false);
         handleGetRecommendations();
     };
 
@@ -193,7 +201,7 @@ const RecommendationsPage: React.FC = () => {
             <div className="bg-slate-800/50 rounded-xl p-6 shadow-lg">
                 <h1 className="text-3xl font-bold text-white mb-4 flex items-center"><FilterIcon className="mr-3" />Filter Recommendations</h1>
                 
-                <div className="grid md:grid-cols-3 gap-6">
+                <div className="grid md:grid-cols-4 gap-6">
                     <div>
                         <label className="block text-slate-300 font-medium mb-2">Surf Spots</label>
                         <div className="max-h-48 overflow-y-auto bg-slate-700 p-2 rounded-lg space-y-2">
@@ -227,6 +235,13 @@ const RecommendationsPage: React.FC = () => {
                             <option value="[0,1]">Today & Tomorrow</option>
                         </select>
                     </div>
+                    <div className="flex flex-col">
+                        <label className="block text-slate-300 font-medium mb-2">Time Range</label>
+                        <div className="flex items-center space-x-2">
+                             <input type="time" value={startTime} onChange={handleTimeChange(setStartTime)} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>
+                             <input type="time" value={endTime} onChange={handleTimeChange(setEndTime)} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="mt-6 text-right">
@@ -238,8 +253,8 @@ const RecommendationsPage: React.FC = () => {
                 </div>
             </div>
 
+            {/* O resto do componente (exibição dos resultados) permanece o mesmo */}
             {error && <p className="bg-red-500/20 text-red-300 p-3 rounded-lg text-center">{error}</p>}
-
             <div className="space-y-8">
                 {loading && (
                     <div className="text-center p-10">

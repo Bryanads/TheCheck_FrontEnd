@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getPresets, createPreset, updatePreset, deletePreset, getSpots } from '../services/api';
@@ -14,6 +13,8 @@ const PresetForm: React.FC<{
     const { userId } = useAuth();
     const [name, setName] = useState(currentPreset?.preset_name || '');
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>(currentPreset?.spot_ids || []);
+    const [startTime, setStartTime] = useState(currentPreset?.start_time || '06:00');
+    const [endTime, setEndTime] = useState(currentPreset?.end_time || '18:00');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -23,8 +24,8 @@ const PresetForm: React.FC<{
             user_id: userId,
             preset_name: name,
             spot_ids: selectedSpotIds,
-            start_time: currentPreset?.start_time || '06:00',
-            end_time: currentPreset?.end_time || '18:00',
+            start_time: startTime,
+            end_time: endTime,
             day_offset_default: currentPreset?.day_offset_default || [0],
             is_default: currentPreset?.is_default || false
         };
@@ -68,6 +69,24 @@ const PresetForm: React.FC<{
                         ))}
                         </div>
                     </div>
+                    <div>
+                        <label className="block text-slate-300 font-medium mb-2">Default Time Range</label>
+                        <div className="flex items-center space-x-4">
+                            <input
+                                type="time"
+                                value={startTime}
+                                onChange={(e) => setStartTime(e.target.value)}
+                                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                            <span className="text-slate-400">to</span>
+                             <input
+                                type="time"
+                                value={endTime}
+                                onChange={(e) => setEndTime(e.target.value)}
+                                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                        </div>
+                    </div>
                     <div className="flex justify-end space-x-4 pt-4">
                         <button type="button" onClick={onClose} className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
                         <button type="submit" className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg">Save</button>
@@ -77,6 +96,8 @@ const PresetForm: React.FC<{
         </div>
     );
 };
+
+// --- O restante do componente PresetsPage permanece o mesmo ---
 
 const PresetsPage: React.FC = () => {
     const { userId } = useAuth();
