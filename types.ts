@@ -1,10 +1,9 @@
-
 export interface User {
   user_id: string;
   name: string;
   email: string;
-  surf_level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
-  stance: 'Regular' | 'Goofy';
+  surf_level: 'maroleiro' | 'intermediario' ;
+  goofy_regular_stance: 'Regular' | 'Goofy'; 
   preferred_wave_direction: 'Left' | 'Right' | 'Both';
   bio?: string;
   profile_picture_url?: string;

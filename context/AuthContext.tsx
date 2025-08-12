@@ -1,4 +1,4 @@
-
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-f03cde61b76c4dc92c43cdfdefb847af8ae2bc19/context/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { User } from '../types';
 import { getUserProfile } from '../services/api';
@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (token: string, userId: string) => void;
   logout: () => void;
+  updateUser: (user: User) => void; // Nova função
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,6 +47,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
     fetchUser();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const login = (newToken: string, newUserId: string) => {
@@ -63,8 +65,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
   };
 
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ token, userId, user, isAuthenticated: !!token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ token, userId, user, isAuthenticated: !!token, isLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,20 +1,21 @@
-
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-f03cde61b76c4dc92c43cdfdefb847af8ae2bc19/pages/ProfilePage.tsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { updateUserProfile } from '../services/api';
 import { User } from '../types';
 
 const ProfilePage: React.FC = () => {
-    const { user, userId, isLoading } = useAuth();
+    const { user, userId, isLoading, updateUser } = useAuth(); // Adicionado updateUser
     const [formData, setFormData] = useState<Partial<User>>({});
     const [message, setMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (user) {
             setFormData({
                 name: user.name,
                 surf_level: user.surf_level,
-                stance: user.stance,
+                goofy_regular_stance: user.goofy_regular_stance, // Alterado de stance
                 preferred_wave_direction: user.preferred_wave_direction,
                 bio: user.bio,
             });
@@ -28,12 +29,23 @@ const ProfilePage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!userId) return;
+        setIsSubmitting(true);
         try {
-            await updateUserProfile(userId, formData);
+            // A API espera goofy_regular_stance, então garantimos que está no formato correto
+            const payload = { ...formData };
+            if (payload.goofy_regular_stance) {
+                payload.goofy_regular_stance = payload.goofy_regular_stance;
+                delete payload.goofy_regular_stance;
+            }
+
+            const response = await updateUserProfile(userId, payload);
+            updateUser(response.user); // Atualiza o usuário no contexto global
             setMessage('Profile updated successfully!');
             setTimeout(() => setMessage(''), 3000);
         } catch (error) {
             setMessage('Failed to update profile.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -61,17 +73,23 @@ const ProfilePage: React.FC = () => {
                     <div>
                         <label htmlFor="surf_level" className="block text-sm font-medium text-slate-300">Surf Level</label>
                         <select name="surf_level" id="surf_level" value={formData.surf_level || ''} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                            <option>Beginner</option>
-                            <option>Intermediate</option>
-                            <option>Advanced</option>
-                            <option>Expert</option>
+                            <option>maroleiro</option>
+                            <option>intermediario</option>
                         </select>
                     </div>
                      <div>
-                        <label htmlFor="stance" className="block text-sm font-medium text-slate-300">Stance</label>
-                        <select name="stance" id="stance" value={formData.stance || ''} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        <label htmlFor="goofy_regular_stance" className="block text-sm font-medium text-slate-300">Stance</label>
+                        <select name="goofy_regular_stance" id="goofy_regular_stance" value={formData.goofy_regular_stance || ''} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
                             <option>Regular</option>
                             <option>Goofy</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="preferred_wave_direction" className="block text-sm font-medium text-slate-300">Preferred Wave Direction</label>
+                        <select name="preferred_wave_direction" id="preferred_wave_direction" value={formData.preferred_wave_direction || ''} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                            <option>Left</option>
+                            <option>Right</option>
+                            <option>Both</option>
                         </select>
                     </div>
                     <div>
@@ -79,9 +97,11 @@ const ProfilePage: React.FC = () => {
                          <textarea name="bio" id="bio" rows={3} value={formData.bio || ''} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
                     </div>
                     <div className="text-right">
-                        <button type="submit" className="bg-cyan-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-cyan-600 transition-all">Save Changes</button>
+                        <button type="submit" disabled={isSubmitting} className="bg-cyan-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-cyan-600 transition-all disabled:bg-slate-600 disabled:cursor-not-allowed">
+                            {isSubmitting ? 'Saving...' : 'Save Changes'}
+                        </button>
                     </div>
-                     {message && <p className="text-center text-green-400 mt-4">{message}</p>}
+                     {message && <p className={`text-center mt-4 ${message.includes('Failed') ? 'text-red-400' : 'text-green-400'}`}>{message}</p>}
                 </form>
             </div>
         </div>

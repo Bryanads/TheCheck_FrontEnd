@@ -128,7 +128,7 @@ const RecommendationsPage: React.FC = () => {
                 spot_ids: selectedSpotIds,
                 day_offset: dayOffset,
                 start_time: "05:00",
-                end_time: "20:00"
+                end_time: "17:00"
             };
             const result = await getRecommendations(data);
             setRecommendations(result);
