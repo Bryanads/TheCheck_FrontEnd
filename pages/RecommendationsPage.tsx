@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import { getSpots, getRecommendations, getPresets } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Spot, SpotRecommendation, HourlyRecommendation, Preset } from '../types';
 import { CheckIcon, ClockIcon, FilterIcon, SunIcon, WaveIcon, WindIcon } from '../components/icons';
+
+const CACHE_KEY = 'thecheck_recommendations';
 
 const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
     const getScoreColor = (s: number) => {
@@ -88,32 +89,8 @@ const RecommendationsPage: React.FC = () => {
     const [recommendations, setRecommendations] = useState<SpotRecommendation[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!userId) return;
-            try {
-                const [spotsData, presetsData] = await Promise.all([getSpots(), getPresets(userId)]);
-                setSpots(spotsData);
-                setPresets(presetsData);
-                const defaultPreset = presetsData.find(p => p.is_default);
-                if (defaultPreset) {
-                    setSelectedSpotIds(defaultPreset.spot_ids);
-                    setDayOffset(defaultPreset.day_offset_default);
-                } else if(spotsData.length > 0) {
-                   setSelectedSpotIds([spotsData[0].spot_id]);
-                }
-            } catch (err) {
-                setError('Failed to load initial data.');
-            }
-        };
-        fetchData();
-    }, [userId]);
-    
-    const handleSpotToggle = (spotId: number) => {
-        setSelectedSpotIds(prev => prev.includes(spotId) ? prev.filter(id => id !== spotId) : [...prev, spotId]);
-    };
-    
     const handleGetRecommendations = useCallback(async () => {
         if (!userId || selectedSpotIds.length === 0) {
             setError("Please select at least one spot.");
@@ -121,7 +98,6 @@ const RecommendationsPage: React.FC = () => {
         }
         setLoading(true);
         setError(null);
-        setRecommendations([]);
         try {
             const data = {
                 user_id: userId,
@@ -132,16 +108,84 @@ const RecommendationsPage: React.FC = () => {
             };
             const result = await getRecommendations(data);
             setRecommendations(result);
+            // Salva no cache apenas as recomendações de buscas manuais
+            if (!isInitialLoad) {
+                sessionStorage.setItem(CACHE_KEY, JSON.stringify(result));
+            }
         } catch (err: any) {
             setError(err.message || "Failed to fetch recommendations.");
         } finally {
             setLoading(false);
+            setIsInitialLoad(false);
         }
-    }, [userId, selectedSpotIds, dayOffset]);
+    }, [userId, selectedSpotIds, dayOffset, isInitialLoad]);
+
+    // Efeito 1: Carrega dados iniciais (spots, presets) e define filtros padrão
+    useEffect(() => {
+        if (!userId) return;
+
+        const fetchInitialData = async () => {
+            setLoading(true);
+            try {
+                const [spotsData, presetsData] = await Promise.all([getSpots(), getPresets(userId)]);
+                setSpots(spotsData);
+                setPresets(presetsData);
+
+                const defaultPreset = presetsData.find(p => p.is_default);
+                if (defaultPreset) {
+                    setSelectedSpotIds(defaultPreset.spot_ids);
+                    setDayOffset(defaultPreset.day_offset_default);
+                } else if (spotsData.length > 0) {
+                    setSelectedSpotIds([spotsData[0].spot_id]);
+                }
+            } catch (err) {
+                setError('Failed to load initial data.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchInitialData();
+    }, [userId]);
+
+    // Efeito 2: Busca recomendações quando os filtros são definidos pela primeira vez
+    useEffect(() => {
+        const cachedRecs = sessionStorage.getItem(CACHE_KEY);
+        if (cachedRecs) {
+            setRecommendations(JSON.parse(cachedRecs));
+            setIsInitialLoad(false);
+            return;
+        }
+        
+        // Se não houver cache e os filtros estiverem prontos, busca automaticamente
+        if (isInitialLoad && selectedSpotIds.length > 0) {
+            handleGetRecommendations();
+        }
+    }, [selectedSpotIds, isInitialLoad, handleGetRecommendations]);
+
+    const handleSpotToggle = (spotId: number) => {
+        setSelectedSpotIds(prev => {
+            const newSelection = prev.includes(spotId) ? prev.filter(id => id !== spotId) : [...prev, spotId];
+            sessionStorage.removeItem(CACHE_KEY); // Limpa o cache ao mudar a seleção
+            return newSelection;
+        });
+    };
 
     const handlePresetApply = (preset: Preset) => {
         setSelectedSpotIds(preset.spot_ids);
         setDayOffset(preset.day_offset_default);
+        sessionStorage.removeItem(CACHE_KEY); // Limpa o cache ao aplicar preset
+    };
+
+    const handleDayOffsetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setDayOffset(JSON.parse(e.target.value));
+        sessionStorage.removeItem(CACHE_KEY); // Limpa o cache ao mudar os dias
+    };
+    
+    // Botão de busca manual
+    const handleManualSearch = () => {
+        setIsInitialLoad(false); // Garante que a busca seja tratada como manual
+        handleGetRecommendations();
     };
 
     return (
@@ -175,7 +219,7 @@ const RecommendationsPage: React.FC = () => {
                         <label className="block text-slate-300 font-medium mb-2">Days from Today</label>
                         <select
                             value={JSON.stringify(dayOffset)}
-                            onChange={e => setDayOffset(JSON.parse(e.target.value))}
+                            onChange={handleDayOffsetChange}
                             className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                         >
                             <option value="[0]">Today</option>
@@ -186,7 +230,7 @@ const RecommendationsPage: React.FC = () => {
                 </div>
 
                 <div className="mt-6 text-right">
-                    <button onClick={handleGetRecommendations} disabled={loading} className="bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-600 transition-all shadow-md shadow-cyan-500/30 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center float-right">
+                    <button onClick={handleManualSearch} disabled={loading} className="bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-600 transition-all shadow-md shadow-cyan-500/30 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center float-right">
                          {loading && <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>}
                          <CheckIcon className="mr-2"/>
                          Get My Check
