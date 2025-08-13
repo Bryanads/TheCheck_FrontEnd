@@ -85,3 +85,10 @@ export interface Preset {
     is_default: boolean;
     is_active: boolean;
 }
+
+export interface RecommendationFilters {
+    selectedSpotIds: number[];
+    dayOffset: number[];
+    startTime: string;
+    endTime: string;
+}
