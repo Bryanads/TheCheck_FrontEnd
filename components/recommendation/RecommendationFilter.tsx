@@ -52,7 +52,7 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                 className="p-6 cursor-pointer flex justify-between items-center"
                 onClick={() => setIsFilterVisible(!isFilterVisible)}
             >
-                <h1 className="text-3xl font-bold text-white flex items-center"><FilterIcon className="mr-3" />Filter Recommendations</h1>
+                <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center"><FilterIcon className="mr-3" />Filter Recommendations</h1>
                 <ChevronDownIcon className={`w-6 h-6 text-slate-400 transition-transform duration-300 ${isFilterVisible ? 'rotate-180' : ''}`} />
             </div>
             

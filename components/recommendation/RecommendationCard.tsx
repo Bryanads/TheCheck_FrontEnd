@@ -14,12 +14,12 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({ rec }) =
     const detailScoresData = Object.entries(rec.detailed_scores).map(([name, value]) => ({ name: name.replace(/_score/g, ' ').replace(/_/g, ' '), value }));
 
     return (
-        <div className="bg-slate-800 rounded-lg p-4 snap-start flex-shrink-0 w-80">
+        <div className="bg-slate-800 rounded-lg p-4 snap-start flex-shrink-0 w-[85vw] sm:w-80">
             <div className="flex justify-between items-center">
                 <div className="text-xl font-bold text-white">{date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                 <ScoreGauge score={rec.suitability_score} />
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 text-sm text-slate-300">
+            <div className="mt-4 grid grid-cols-1 min-[340px]:grid-cols-2 gap-x-4 gap-y-2 text-sm text-slate-300">
                 <div className="flex items-center space-x-2"><WaveIcon className="w-5 h-5 text-cyan-400" /><span>{rec.forecast_conditions.wave_height_sg.toFixed(1)}m @ {rec.forecast_conditions.wave_period_sg.toFixed(0)}s ({degreesToCardinal(rec.forecast_conditions.wave_direction_sg)})</span></div>
                 <div className="flex items-center space-x-2"><WindIcon className="w-5 h-5 text-cyan-400" /><span>{rec.forecast_conditions.wind_speed_sg.toFixed(2)} m/s ({degreesToCardinal(rec.forecast_conditions.wind_direction_sg)})</span></div>
                 <div className="flex items-center space-x-2"><SunIcon className="w-5 h-5 text-cyan-400" /><span>Air:{rec.forecast_conditions.air_temperature_sg.toFixed(1)}°C Water: {rec.forecast_conditions.water_temperature_sg.toFixed(1)}°C</span></div>
