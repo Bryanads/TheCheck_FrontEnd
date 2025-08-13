@@ -3,11 +3,13 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, RadialBarCha
 import { getSpots, getRecommendations, getPresets } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Spot, SpotRecommendation, HourlyRecommendation, Preset } from '../types';
-import { CheckIcon, ClockIcon, FilterIcon, SunIcon, WaveIcon, WindIcon } from '../components/icons';
+import { CheckIcon, ClockIcon, FilterIcon, SunIcon, WaveIcon, WindIcon, ChevronDownIcon } from '../components/icons';
+import { degreesToCardinal } from '../utils/utils';
 
-const CACHE_KEY = 'thecheck_recommendations';
+// Definindo as chaves do cache para fácil manutenção
+const RECOMMENDATIONS_CACHE_KEY = 'thecheck_recommendations';
+const DEFAULT_PRESET_CACHE_KEY = 'thecheck_default_preset';
 
-// --- Seus componentes ScoreGauge e RecommendationCard permanecem os mesmos ---
 
 const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
     const getScoreColor = (s: number) => {
@@ -45,11 +47,6 @@ const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
 
 const RecommendationCard: React.FC<{ rec: HourlyRecommendation }> = ({ rec }) => {
     const date = new Date(rec.timestamp_utc);
-    const getScoreColorClass = (s: number) => {
-      if (s > 75) return 'text-green-400';
-      if (s > 50) return 'text-yellow-400';
-      return 'text-red-400';
-    };
     const detailScoresData = Object.entries(rec.detailed_scores).map(([name, value]) => ({ name: name.replace(/_score/g, ' ').replace(/_/g, ' '), value }));
 
     return (
@@ -59,10 +56,10 @@ const RecommendationCard: React.FC<{ rec: HourlyRecommendation }> = ({ rec }) =>
                 <ScoreGauge score={rec.suitability_score} />
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2 text-sm text-slate-300">
-                <div className="flex items-center space-x-2"><WaveIcon className="w-5 h-5 text-cyan-400" /><span>{rec.forecast_conditions.wave_height_sg.toFixed(1)}m @ {rec.forecast_conditions.wave_period_sg.toFixed(0)}s</span></div>
-                <div className="flex items-center space-x-2"><WindIcon className="w-5 h-5 text-cyan-400" /><span>{rec.forecast_conditions.wind_speed_sg.toFixed(0)} km/h</span></div>
-                <div className="flex items-center space-x-2"><SunIcon className="w-5 h-5 text-cyan-400" /><span>{rec.forecast_conditions.air_temperature_sg.toFixed(0)}°C Air</span></div>
-                <div className="flex items-center space-x-2"><ClockIcon className="w-5 h-5 text-cyan-400" /><span>Tide: {rec.forecast_conditions.tide_phase}</span></div>
+                <div className="flex items-center space-x-2"><WaveIcon className="w-5 h-5 text-cyan-400" /><span>{rec.forecast_conditions.wave_height_sg.toFixed(1)}m @ {rec.forecast_conditions.wave_period_sg.toFixed(0)}s ({degreesToCardinal(rec.forecast_conditions.wave_direction_sg)})</span></div>
+                <div className="flex items-center space-x-2"><WindIcon className="w-5 h-5 text-cyan-400" /><span>{rec.forecast_conditions.wind_speed_sg.toFixed(2)} m/s ({degreesToCardinal(rec.forecast_conditions.wind_direction_sg)})</span></div>
+                <div className="flex items-center space-x-2"><SunIcon className="w-5 h-5 text-cyan-400" /><span>Air:{rec.forecast_conditions.air_temperature_sg.toFixed(1)}°C Water: {rec.forecast_conditions.water_temperature_sg.toFixed(1)}°C</span></div>
+                <div className="flex items-center space-x-2"><ClockIcon className="w-5 h-5 text-cyan-400" /><span>Tide: {rec.forecast_conditions.sea_level_sg.toFixed(2)}m  {rec.forecast_conditions.tide_phase}</span></div>
             </div>
              <details className="mt-4">
                 <summary className="cursor-pointer text-cyan-400 hover:text-cyan-300 font-medium">Detailed Score</summary>
@@ -92,8 +89,10 @@ const RecommendationsPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
-    const [startTime, setStartTime] = useState('06:00');
-    const [endTime, setEndTime] = useState('18:00');
+    const [startTime, setStartTime] = useState('05:00');
+    const [endTime, setEndTime] = useState('17:00');
+    // NOVO: Estado para controlar a visibilidade dos filtros
+    const [isFilterVisible, setIsFilterVisible] = useState(false);
 
     const handleGetRecommendations = useCallback(async () => {
         if (!userId || selectedSpotIds.length === 0) {
@@ -112,35 +111,46 @@ const RecommendationsPage: React.FC = () => {
             };
             const result = await getRecommendations(data);
             setRecommendations(result);
-            if (!isInitialLoad) {
-                sessionStorage.setItem(CACHE_KEY, JSON.stringify(result));
-            }
+            // Salva a última recomendação no sessionStorage
+            sessionStorage.setItem(RECOMMENDATIONS_CACHE_KEY, JSON.stringify(result));
         } catch (err: any) {
             setError(err.message || "Failed to fetch recommendations.");
         } finally {
             setLoading(false);
             setIsInitialLoad(false);
         }
-    }, [userId, selectedSpotIds, dayOffset, startTime, endTime, isInitialLoad]);
+    }, [userId, selectedSpotIds, dayOffset, startTime, endTime]);
 
+    // Efeito para carregar dados iniciais (presets, spots) e configurar filtros
     useEffect(() => {
         if (!userId) return;
 
         const fetchInitialData = async () => {
             setLoading(true);
             try {
+                // Carrega presets e spots em paralelo
                 const [spotsData, presetsData] = await Promise.all([getSpots(), getPresets(userId)]);
                 setSpots(spotsData);
                 setPresets(presetsData);
 
-                const defaultPreset = presetsData.find(p => p.is_default);
-                if (defaultPreset) {
-                    setSelectedSpotIds(defaultPreset.spot_ids);
-                    setDayOffset(defaultPreset.day_offset_default);
-                    setStartTime(defaultPreset.start_time);
-                    setEndTime(defaultPreset.end_time);
-                } else if (spotsData.length > 0) {
-                    setSelectedSpotIds([spotsData[0].spot_id]);
+                const serverDefaultPreset = presetsData.find(p => p.is_default);
+                if (serverDefaultPreset) {
+                    // Salva o preset padrão mais recente no localStorage
+                    localStorage.setItem(DEFAULT_PRESET_CACHE_KEY, JSON.stringify(serverDefaultPreset));
+                }
+
+                // Se não houver recomendação em cache, aplica o preset padrão
+                const cachedRecs = sessionStorage.getItem(RECOMMENDATIONS_CACHE_KEY);
+                if (!cachedRecs) {
+                     const presetToApply = serverDefaultPreset || (presetsData.length > 0 ? presetsData[0] : null);
+                     if (presetToApply) {
+                        setSelectedSpotIds(presetToApply.spot_ids);
+                        setDayOffset(presetToApply.day_offset_default);
+                        setStartTime(presetToApply.start_time);
+                        setEndTime(presetToApply.end_time);
+                     } else if (spotsData.length > 0) {
+                        setSelectedSpotIds([spotsData[0].spot_id]);
+                     }
                 }
             } catch (err) {
                 setError('Failed to load initial data.');
@@ -149,26 +159,43 @@ const RecommendationsPage: React.FC = () => {
             }
         };
 
-        fetchInitialData();
-    }, [userId]);
-
-    useEffect(() => {
-        const cachedRecs = sessionStorage.getItem(CACHE_KEY);
+        // Carrega filtros do cache do preset padrão ANTES de buscar na API
+        const cachedPreset = localStorage.getItem(DEFAULT_PRESET_CACHE_KEY);
+        if (cachedPreset) {
+            const preset = JSON.parse(cachedPreset) as Preset;
+            setSelectedSpotIds(preset.spot_ids);
+            setDayOffset(preset.day_offset_default);
+            setStartTime(preset.start_time);
+            setEndTime(preset.end_time);
+        }
+        
+        // Carrega as recomendações da sessão atual, se existirem
+        const cachedRecs = sessionStorage.getItem(RECOMMENDATIONS_CACHE_KEY);
         if (cachedRecs) {
             setRecommendations(JSON.parse(cachedRecs));
             setIsInitialLoad(false);
-            return;
         }
-        
-        if (isInitialLoad && selectedSpotIds.length > 0) {
+
+        fetchInitialData();
+    }, [userId]);
+
+    // Efeito para buscar as recomendações na carga inicial se não houver cache
+    useEffect(() => {
+        if (isInitialLoad && selectedSpotIds.length > 0 && recommendations.length === 0) {
             handleGetRecommendations();
         }
-    }, [selectedSpotIds, isInitialLoad, handleGetRecommendations]);
+    }, [selectedSpotIds, isInitialLoad, recommendations.length, handleGetRecommendations]);
+
+    const clearCacheAndFetch = () => {
+        sessionStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
+        setRecommendations([]); // Limpa as recomendações atuais para forçar a busca
+        handleGetRecommendations();
+    };
 
     const handleSpotToggle = (spotId: number) => {
         setSelectedSpotIds(prev => {
             const newSelection = prev.includes(spotId) ? prev.filter(id => id !== spotId) : [...prev, spotId];
-            sessionStorage.removeItem(CACHE_KEY);
+            sessionStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
             return newSelection;
         });
     };
@@ -178,82 +205,93 @@ const RecommendationsPage: React.FC = () => {
         setDayOffset(preset.day_offset_default);
         setStartTime(preset.start_time);
         setEndTime(preset.end_time);
-        sessionStorage.removeItem(CACHE_KEY);
+        sessionStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
     };
 
     const handleDayOffsetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setDayOffset(JSON.parse(e.target.value));
-        sessionStorage.removeItem(CACHE_KEY);
+        sessionStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
     };
     
     const handleTimeChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
         setter(e.target.value);
-        sessionStorage.removeItem(CACHE_KEY);
+        sessionStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
     }
     
     const handleManualSearch = () => {
         setIsInitialLoad(false);
-        handleGetRecommendations();
+        clearCacheAndFetch();
     };
 
     return (
         <div className="space-y-8">
-            <div className="bg-slate-800/50 rounded-xl p-6 shadow-lg">
-                <h1 className="text-3xl font-bold text-white mb-4 flex items-center"><FilterIcon className="mr-3" />Filter Recommendations</h1>
+            <div className="bg-slate-800/50 rounded-xl shadow-lg transition-all duration-300">
+                {/* Cabeçalho Clicável para Mostrar/Esconder Filtros */}
+                <div 
+                    className="p-6 cursor-pointer flex justify-between items-center"
+                    onClick={() => setIsFilterVisible(!isFilterVisible)}
+                >
+                    <h1 className="text-3xl font-bold text-white flex items-center"><FilterIcon className="mr-3" />Filter Recommendations</h1>
+                    <ChevronDownIcon className={`w-6 h-6 text-slate-400 transition-transform duration-300 ${isFilterVisible ? 'rotate-180' : ''}`} />
+                </div>
                 
-                <div className="grid md:grid-cols-4 gap-6">
-                    <div>
-                        <label className="block text-slate-300 font-medium mb-2">Surf Spots</label>
-                        <div className="max-h-48 overflow-y-auto bg-slate-700 p-2 rounded-lg space-y-2">
-                        {spots.map(spot => (
-                            <button key={spot.spot_id} onClick={() => handleSpotToggle(spot.spot_id)} className={`w-full text-left p-2 rounded-md transition-colors ${selectedSpotIds.includes(spot.spot_id) ? 'bg-cyan-500 text-white font-bold' : 'hover:bg-slate-600'}`}>
-                                {spot.spot_name}
-                            </button>
-                        ))}
+                {/* Conteúdo dos Filtros (Visibilidade Condicional) */}
+                {isFilterVisible && (
+                    <div className="p-6 pt-0">
+                        <div className="grid md:grid-cols-4 gap-6">
+                            <div>
+                                <label className="block text-slate-300 font-medium mb-2">Surf Spots</label>
+                                <div className="max-h-48 overflow-y-auto bg-slate-700 p-2 rounded-lg space-y-2">
+                                {spots.map(spot => (
+                                    <button key={spot.spot_id} onClick={() => handleSpotToggle(spot.spot_id)} className={`w-full text-left p-2 rounded-md transition-colors ${selectedSpotIds.includes(spot.spot_id) ? 'bg-cyan-500 text-white font-bold' : 'hover:bg-slate-600'}`}>
+                                        {spot.spot_name}
+                                    </button>
+                                ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-slate-300 font-medium mb-2">Presets</label>
+                                <div className="space-y-2">
+                                {presets.map(preset => (
+                                    <button key={preset.preset_id} onClick={() => handlePresetApply(preset)} className="w-full text-left p-2 rounded-md transition-colors bg-slate-700 hover:bg-slate-600 flex justify-between items-center">
+                                        <span>{preset.preset_name}</span>
+                                        {preset.is_default && <span className="text-xs bg-cyan-800 text-cyan-200 px-2 py-0.5 rounded-full">Default</span>}
+                                    </button>
+                                ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-slate-300 font-medium mb-2">Days from Today</label>
+                                <select
+                                    value={JSON.stringify(dayOffset)}
+                                    onChange={handleDayOffsetChange}
+                                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                >
+                                    <option value="[0]">Today</option>
+                                    <option value="[1]">Tomorrow</option>
+                                    <option value="[0,1]">Today & Tomorrow</option>
+                                </select>
+                            </div>
+                            <div className="flex flex-col">
+                                <label className="block text-slate-300 font-medium mb-2">Time Range</label>
+                                <div className="flex items-center space-x-2">
+                                    <input type="time" value={startTime} onChange={handleTimeChange(setStartTime)} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>
+                                    <input type="time" value={endTime} onChange={handleTimeChange(setEndTime)} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div>
-                         <label className="block text-slate-300 font-medium mb-2">Presets</label>
-                        <div className="space-y-2">
-                        {presets.map(preset => (
-                            <button key={preset.preset_id} onClick={() => handlePresetApply(preset)} className="w-full text-left p-2 rounded-md transition-colors bg-slate-700 hover:bg-slate-600 flex justify-between items-center">
-                                <span>{preset.preset_name}</span>
-                                {preset.is_default && <span className="text-xs bg-cyan-800 text-cyan-200 px-2 py-0.5 rounded-full">Default</span>}
-                            </button>
-                        ))}
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-slate-300 font-medium mb-2">Days from Today</label>
-                        <select
-                            value={JSON.stringify(dayOffset)}
-                            onChange={handleDayOffsetChange}
-                            className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        >
-                            <option value="[0]">Today</option>
-                            <option value="[1]">Tomorrow</option>
-                            <option value="[0,1]">Today & Tomorrow</option>
-                        </select>
-                    </div>
-                    <div className="flex flex-col">
-                        <label className="block text-slate-300 font-medium mb-2">Time Range</label>
-                        <div className="flex items-center space-x-2">
-                             <input type="time" value={startTime} onChange={handleTimeChange(setStartTime)} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>
-                             <input type="time" value={endTime} onChange={handleTimeChange(setEndTime)} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>
-                        </div>
-                    </div>
-                </div>
 
-                <div className="mt-6 text-right">
-                    <button onClick={handleManualSearch} disabled={loading} className="bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-600 transition-all shadow-md shadow-cyan-500/30 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center float-right">
-                         {loading && <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>}
-                         <CheckIcon className="mr-2"/>
-                         Get My Check
-                    </button>
-                </div>
+                        <div className="mt-6 text-right">
+                            <button onClick={handleManualSearch} disabled={loading} className="bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-600 transition-all shadow-md shadow-cyan-500/30 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center float-right">
+                                {loading && <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>}
+                                <CheckIcon className="mr-2"/>
+                                Get My Check
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* O resto do componente (exibição dos resultados) permanece o mesmo */}
             {error && <p className="bg-red-500/20 text-red-300 p-3 rounded-lg text-center">{error}</p>}
             <div className="space-y-8">
                 {loading && (
@@ -274,11 +312,11 @@ const RecommendationsPage: React.FC = () => {
                         <h2 className="text-2xl font-bold text-white mb-4">{spotRec.spot_name}</h2>
                         {spotRec.day_offsets.map(dayRec => (
                             <div key={dayRec.day_offset} className="mb-6">
-                                <h3 className="text-lg font-semibold text-cyan-400 mb-3">{dayRec.day_offset === 0 ? "Today" : `In ${dayRec.day_offset} day(s)`}</h3>
+                                <h3 className="text-lg font-semibold text-cyan-400 mb-3">{new Date(dayRec.recommendations[0]?.timestamp_utc).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
                                 {dayRec.recommendations.length > 0 ? (
                                     <div className="flex overflow-x-auto space-x-4 pb-4 snap-x snap-mandatory">
                                         {dayRec.recommendations
-                                            .sort((a, b) => b.suitability_score - a.suitability_score)
+                                            .sort((a, b) => new Date(a.timestamp_utc).getTime() - new Date(b.timestamp_utc).getTime())
                                             .map(rec => <RecommendationCard key={rec.timestamp_utc} rec={rec} />)}
                                     </div>
                                 ) : (

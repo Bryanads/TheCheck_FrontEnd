@@ -64,9 +64,11 @@ export const getForecasts = (data: { spot_ids: number[], day_offset: number[] })
 };
 
 // Recommendation Endpoints
-export const getRecommendations = (data: object) => {
+export const getRecommendations = async (data: object) => {
     console.log("Enviando para /recommendations:", JSON.stringify(data, null, 2));
-    return apiFetch<any[]>('/recommendations', { method: 'POST', body: JSON.stringify(data) });
+    const response = await apiFetch<any[]>('/recommendations', { method: 'POST', body: JSON.stringify(data) });
+    console.log("Resposta da API /recommendations:", JSON.stringify(response, null, 2));
+    return response;
 };
 
 // Preset Endpoints
