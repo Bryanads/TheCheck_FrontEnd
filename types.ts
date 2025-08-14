@@ -41,6 +41,7 @@ export interface Forecast {
 }
 
 export interface DetailedScores {
+  wave_score: any;
   wave_height_score: number;
   swell_direction_score: number;
   swell_period_score: number;
