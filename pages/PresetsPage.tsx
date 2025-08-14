@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. Importar o hook de navegação
 import { useAuth, SPOTS_CACHE_KEY, PRESETS_SESSION_CACHE_KEY, DEFAULT_PRESET_LOCAL_CACHE_KEY, RECOMMENDATIONS_CACHE_KEY } from '../context/AuthContext';
 import { getPresets, createPreset, updatePreset, deletePreset, getSpots } from '../services/api';
 import { Preset, Spot } from '../types';
