@@ -1,6 +1,6 @@
 import { User } from '../types';
 
-const API_BASE_URL = 'http://127.0.0.1:5000'; // Your FastAPI backend URL
+const API_BASE_URL = 'http://192.168.15.11:5000';
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
     const token = localStorage.getItem('thecheck_token');
