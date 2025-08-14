@@ -3,15 +3,25 @@ import { DayOffsetRecommendations, HourlyRecommendation, SpotPreferences } from 
 import { degreesToCardinal } from '../../utils/utils';
 import { ScoreGauge } from './ScoreGauge';
 import { HourlyForecastCharts } from './HourlyForecastCharts';
-import { WaveIcon, WindIcon } from '../icons';
+import { WaveIcon, WindIcon, WarningIcon } from '../icons'; // Certifique-se de importar o WarningIcon
 
 interface ExpandedDayViewProps {
     dayRec: DayOffsetRecommendations;
-    spotPreferences: SpotPreferences; // Recebe as preferências
+    spotPreferences: SpotPreferences;
 }
-// O "card" de resumo que fica no topo da vista expandida
-const SpotlightHourCard: React.FC<{ rec: HourlyRecommendation }> = ({ rec }) => {
+
+// O "card" de resumo que fica no topo da vista expandida com a nova lógica de aviso
+const SpotlightHourCard: React.FC<{ rec: HourlyRecommendation; preferences: SpotPreferences }> = ({ rec, preferences }) => {
     const date = new Date(rec.timestamp_utc);
+
+    // 1. Gera as mensagens de aviso individuais
+    const waveWarning = rec.forecast_conditions.wave_height_sg > preferences.max_wave_height ? `Ondas acima do seu máximo (${preferences.max_wave_height}m)` :
+                        rec.forecast_conditions.wave_height_sg < preferences.min_wave_height ? `Ondas abaixo do seu mínimo (${preferences.min_wave_height}m)` : null;
+
+    const windWarning = rec.forecast_conditions.wind_speed_sg > preferences.max_wind_speed ? ` Vento acima do seu máximo (${preferences.max_wind_speed}m/s)` : null;
+
+    // 2. Combina as mensagens numa única string, se existirem
+    const warningMessages = [waveWarning, windWarning].filter(Boolean);
 
     return (
         <div className="bg-slate-800 rounded-lg p-5 shadow-lg">
@@ -69,6 +79,17 @@ const SpotlightHourCard: React.FC<{ rec: HourlyRecommendation }> = ({ rec }) => 
                     </div>
 
             </div>
+            {/* 3. Renderiza os avisos. Se houver algum, mapeia cada um para uma linha separada */}
+            {warningMessages.length > 0 && (
+                <div className="flex flex-col items-center gap-1 text-center text-sm text-red-400 border-t border-slate-700 pt-3 w-full">
+                    {warningMessages.map((warning, index) => (
+                        <div key={index} className="flex items-center">
+                            <WarningIcon className="w-4 h-4 mr-2 flex-shrink-0" />
+                            <span>{warning}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -90,12 +111,13 @@ export const ExpandedDayView: React.FC<ExpandedDayViewProps> = ({ dayRec, spotPr
 
     return (
         <div className="mb-6">
-            <SpotlightHourCard rec={spotlightHour} />
+            {/* Garante que as 'spotPreferences' são passadas para o SpotlightHourCard */}
+            <SpotlightHourCard rec={spotlightHour} preferences={spotPreferences} />
             <HourlyForecastCharts 
                 allHoursData={dayRec.recommendations}
                 spotlightHour={spotlightHour}
                 onBarClick={(hour) => setSpotlightHour(hour)}
-                spotPreferences={spotPreferences} // Passa as preferências para os gráficos
+                spotPreferences={spotPreferences}
             />
         </div>
     );

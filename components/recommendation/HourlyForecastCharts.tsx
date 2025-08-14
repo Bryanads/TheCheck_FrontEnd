@@ -86,7 +86,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                                     <Cell key={`cell-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : primaryColor} />
                                 ))}
                             </Bar>
-                            <ReferenceLine y={spotPreferences.ideal_wave_height} stroke={getScoreColor(spotlightHour.detailed_scores.wave_score)}  strokeDasharray="3 3" />
+                            {/* <ReferenceLine y={spotPreferences.ideal_wave_height} stroke={getScoreColor(spotlightHour.detailed_scores.wave_score)}  strokeDasharray="3 3" /> */}
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -117,7 +117,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                                     <Cell key={`cell-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : primaryColor} />
                                 ))}
                             </Bar>
-                            <ReferenceLine y={spotPreferences.ideal_wind_speed} stroke={getScoreColor(spotlightHour.detailed_scores.wind_score)}  strokeDasharray="3 3" />
+                            {/* <ReferenceLine y={spotPreferences.ideal_wind_speed} stroke={getScoreColor(spotlightHour.detailed_scores.wind_score)}  strokeDasharray="3 3" /> */}
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -148,7 +148,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                                     <Cell key={`cell-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : primaryColor} />
                                 ))}
                             </Bar>
-                            <ReferenceLine y={spotPreferences.ideal_sea_level} stroke={getScoreColor(spotlightHour.detailed_scores.tide_score)}  strokeDasharray="3 3" />
+                            {/* <ReferenceLine y={spotPreferences.ideal_sea_level} stroke={getScoreColor(spotlightHour.detailed_scores.tide_score)}  strokeDasharray="3 3" /> */}
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -174,19 +174,18 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                             <XAxis dataKey="time" tick={{ fill: '#a0aec0', fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: '#a0aec0', fontSize: 10 }} domain={[0, 'auto']} unit="°C" />
                             <Tooltip content={<ForecastTooltip />} />
-                            <Legend wrapperStyle={{ fontSize: '11px', color: '#a0aec0' }} />
                             <Bar dataKey="water_temperature_sg" name="Water" unit="°C" fill="#3b82f6" barSize={12}>
                                 {chartData.map((entry) => (
-                                    <Cell key={`cell-water-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : '#3b82f6'} />
+                                    <Cell key={`cell-water-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? '#2d5eff' : '#0d1c4c'} />
                                 ))}
                             </Bar>
                             <Bar dataKey="air_temperature_sg" name="Air" unit="°C" fill="#818cf8" barSize={12}>
                                 {chartData.map((entry) => (
-                                    <Cell key={`cell-air-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : '#818cf8'} />
+                                    <Cell key={`cell-air-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? '#fff42d' : '#55510f'} />
                                 ))}
                             </Bar>
-                            <ReferenceLine y={spotPreferences.ideal_air_temperature} stroke={getScoreColor(spotlightHour.detailed_scores.air_temperature_score)}  strokeDasharray="3 3" />
-                            <ReferenceLine y={spotPreferences.ideal_water_temperature} stroke={getScoreColor(spotlightHour.detailed_scores.water_temperature_score)}  strokeDasharray="3 3" />
+                            {/* <ReferenceLine y={spotPreferences.ideal_air_temperature} stroke={getScoreColor(spotlightHour.detailed_scores.air_temperature_score)}  strokeDasharray="3 3" /> */}
+                            {/* <ReferenceLine y={spotPreferences.ideal_water_temperature} stroke={getScoreColor(spotlightHour.detailed_scores.water_temperature_score)}  strokeDasharray="3 3" /> */}
 
                         </ComposedChart>
                     </ResponsiveContainer>
