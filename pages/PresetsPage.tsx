@@ -5,6 +5,34 @@ import { Preset, Spot } from '../types';
 import { CogsIcon, PlusIcon, TrashIcon, EditIcon } from '../components/icons';
 import { toUTCTime, toLocalTime } from '../utils/utils';
 
+const WeekdaySelector: React.FC<{
+    selectedDays: number[];
+    onToggle: (dayIndex: number) => void;
+}> = ({ selectedDays, onToggle }) => {
+    const days = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+    return (
+        <div>
+            <label className="block text-slate-300 font-medium mb-2">Dias da Semana</label>
+            <div className="flex justify-between items-center space-x-1">
+                {days.map((day, index) => (
+                    <button
+                        key={index}
+                        type="button"
+                        onClick={() => onToggle(index)}
+                        className={`w-10 h-10 rounded-full font-bold transition-colors ${
+                            selectedDays.includes(index)
+                                ? 'bg-cyan-500 text-white'
+                                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                        }`}
+                    >
+                        {day}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 const PresetForm: React.FC<{
     currentPreset: Partial<Preset> | null;
     spots: Spot[];
@@ -16,6 +44,15 @@ const PresetForm: React.FC<{
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>(currentPreset?.spot_ids || []);
     const [startTime, setStartTime] = useState(toLocalTime(currentPreset?.start_time || '06:00:00'));
     const [endTime, setEndTime] = useState(toLocalTime(currentPreset?.end_time || '18:00:00'));
+    const [weekdays, setWeekdays] = useState<number[]>(currentPreset?.weekdays || []);
+
+    const handleWeekdayToggle = (dayIndex: number) => {
+        setWeekdays(prev =>
+            prev.includes(dayIndex)
+                ? prev.filter(d => d !== dayIndex)
+                : [...prev, dayIndex]
+        );
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,7 +64,7 @@ const PresetForm: React.FC<{
             spot_ids: selectedSpotIds,
             start_time: toUTCTime(startTime),
             end_time: toUTCTime(endTime),
-            day_offset_default: currentPreset?.day_offset_default || [0],
+            weekdays: weekdays, // ALTERADO
             is_default: currentPreset?.is_default || false
         };
 
@@ -63,6 +100,7 @@ const PresetForm: React.FC<{
                         ))}
                         </div>
                     </div>
+                    <WeekdaySelector selectedDays={weekdays} onToggle={handleWeekdayToggle} />
                     <div>
                         <label className="block text-slate-300 font-medium mb-2">Default Time Range (Local)</label>
                         <div className="flex items-center space-x-4">

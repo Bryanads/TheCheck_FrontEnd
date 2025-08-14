@@ -82,7 +82,7 @@ export interface Preset {
     spot_ids: number[];
     start_time: string;
     end_time: string;
-    day_offset_default: number[];
+    weekdays: number[];
     is_default: boolean;
     is_active: boolean;
 }

@@ -48,3 +48,25 @@ export const toLocalTime = (utcTime: string): string => {
     const localMinutes = date.getMinutes().toString().padStart(2, '0');
     return `${localHours}:${localMinutes}`;
 };
+
+/**
+ * Calcula os day_offsets com base nos dias da semana selecionados.
+ * @param weekdays Array de números representando os dias da semana (0=Domingo, 6=Sábado).
+ * @returns Array de day_offsets (e.g., [0, 1] para hoje e amanhã).
+ */
+export const weekdaysToDayOffset = (weekdays: number[]): number[] => {
+    if (!weekdays || weekdays.length === 0) return [0]; // Padrão para hoje se nenhum dia for selecionado
+
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 para Domingo, 1 para Segunda, etc.
+    const offsets: number[] = [];
+
+    for (let i = 0; i < 7; i++) { // Verifica os próximos 7 dias
+        const futureDay = (currentDay + i) % 7;
+        if (weekdays.includes(futureDay)) {
+            offsets.push(i);
+        }
+    }
+    // Se nenhum dia da semana corresponder nos próximos 7 dias, retorna hoje como padrão.
+    return offsets.length > 0 ? offsets : [0];
+};

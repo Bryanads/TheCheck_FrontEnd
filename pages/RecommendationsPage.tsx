@@ -4,6 +4,8 @@ import { getSpots, getRecommendations, getPresets } from '../services/api';
 import { Spot, SpotRecommendation, Preset, RecommendationFilters } from '../types';
 import { RecommendationFilter } from '../components/recommendation/RecommendationFilter';
 import { RecommendationList } from '../components/recommendation/RecommendationList';
+import { weekdaysToDayOffset } from '../utils/utils';
+
 
 const RecommendationsPage: React.FC = () => {
     const { userId } = useAuth();
@@ -59,7 +61,7 @@ const RecommendationsPage: React.FC = () => {
             if (defaultPreset) {
                 initialFilters = {
                     selectedSpotIds: defaultPreset.spot_ids,
-                    dayOffset: defaultPreset.day_offset_default,
+                    dayOffset: weekdaysToDayOffset(defaultPreset.weekdays), // ALTERADO
                     startTime: defaultPreset.start_time,
                     endTime: defaultPreset.end_time,
                 };
