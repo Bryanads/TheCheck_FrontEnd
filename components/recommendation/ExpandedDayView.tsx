@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { DayOffsetRecommendations, HourlyRecommendation } from '../../types';
+import { DayOffsetRecommendations, HourlyRecommendation, SpotPreferences } from '../../types';
 import { degreesToCardinal } from '../../utils/utils';
 import { ScoreGauge } from './ScoreGauge';
 import { HourlyForecastCharts } from './HourlyForecastCharts';
@@ -7,8 +7,8 @@ import { WaveIcon, WindIcon } from '../icons';
 
 interface ExpandedDayViewProps {
     dayRec: DayOffsetRecommendations;
+    spotPreferences: SpotPreferences; // Recebe as preferências
 }
-
 // O "card" de resumo que fica no topo da vista expandida
 const SpotlightHourCard: React.FC<{ rec: HourlyRecommendation }> = ({ rec }) => {
     const date = new Date(rec.timestamp_utc);
@@ -74,8 +74,7 @@ const SpotlightHourCard: React.FC<{ rec: HourlyRecommendation }> = ({ rec }) => 
 };
 
 
-export const ExpandedDayView: React.FC<ExpandedDayViewProps> = ({ dayRec }) => {
-    // Encontra a melhor hora do dia para ser o destaque inicial
+export const ExpandedDayView: React.FC<ExpandedDayViewProps> = ({ dayRec, spotPreferences }) => {
     const bestHour = useMemo(() => {
         if (!dayRec.recommendations || dayRec.recommendations.length === 0) {
             return null;
@@ -96,6 +95,7 @@ export const ExpandedDayView: React.FC<ExpandedDayViewProps> = ({ dayRec }) => {
                 allHoursData={dayRec.recommendations}
                 spotlightHour={spotlightHour}
                 onBarClick={(hour) => setSpotlightHour(hour)}
+                spotPreferences={spotPreferences} // Passa as preferências para os gráficos
             />
         </div>
     );

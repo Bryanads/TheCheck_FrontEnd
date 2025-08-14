@@ -14,11 +14,9 @@ export const RecommendationList: React.FC<RecommendationListProps> = ({ recommen
     const [expandedDayKey, setExpandedDayKey] = useState<string | null>(null);
 
     const toggleExpand = (key: string) => {
-        // Se o mesmo dia for clicado, fecha. Caso contrário, abre o novo dia.
         setExpandedDayKey(prevKey => (prevKey === key ? null : key));
     };
     
-    // ... (as seções de loading, erro e estado inicial permanecem as mesmas)
     if (loading && recommendations.length === 0) {
         return <div className="text-center p-10"><div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div><p className="mt-4 text-slate-300">Checking the surf for you...</p></div>;
     }
@@ -44,9 +42,14 @@ export const RecommendationList: React.FC<RecommendationListProps> = ({ recommen
                                     <DaySummaryCard 
                                         dayRec={dayRec} 
                                         onExpand={() => toggleExpand(key)}
-                                        isExpanded={isExpanded} // Passa o estado para o summary card
+                                        isExpanded={isExpanded}
                                     />
-                                    {isExpanded && <ExpandedDayView dayRec={dayRec} />}
+                                    {isExpanded && (
+                                        <ExpandedDayView 
+                                            dayRec={dayRec} 
+                                            spotPreferences={spotRec.preferences_used_for_spot} 
+                                        />
+                                    )}
                                 </div>
                             );
                         })}

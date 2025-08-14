@@ -69,8 +69,8 @@ const RecommendationsPage: React.FC = () => {
                 initialFilters = {
                     selectedSpotIds: [spots[0].spot_id],
                     dayOffset: [0],
-                    startTime: '06:00:00',
-                    endTime: '18:00:00',
+                    startTime: '05:00:00',
+                    endTime: '17:00:00',
                 };
             }
             setActiveFilters(initialFilters);

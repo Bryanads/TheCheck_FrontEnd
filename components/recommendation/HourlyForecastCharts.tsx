@@ -1,16 +1,17 @@
 import React from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Cell, ComposedChart } from 'recharts';
-import { HourlyRecommendation } from '../../types';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Cell, ComposedChart, ReferenceLine } from 'recharts';
+import { HourlyRecommendation, SpotPreferences } from '../../types';
 import { degreesToCardinal } from '../../utils/utils';
 
 interface HourlyForecastChartsProps {
     allHoursData: HourlyRecommendation[];
     spotlightHour: HourlyRecommendation;
     onBarClick: (hour: HourlyRecommendation) => void;
+    spotPreferences: SpotPreferences;
 }
 
 const getScoreColor = (s: number): string => {
-    if (s > 75) return '#22d3ee'; // cyan-400
+    if (s > 75) return '#419c36'; // green-500
     if (s > 50) return '#eab308'; // yellow-500
     return '#ef4444'; // red-500
 };
@@ -31,7 +32,9 @@ const ForecastTooltip = ({ active, payload, label }: any) => {
     return null;
 };
 
-export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allHoursData, spotlightHour, onBarClick }) => {
+// --- CORREÇÃO AQUI ---
+// Adicionado spotPreferences à desestruturação das props
+export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allHoursData, spotlightHour, onBarClick, spotPreferences }) => {
     
     const chartData = allHoursData
         .sort((a, b) => new Date(a.timestamp_utc).getTime() - new Date(b.timestamp_utc).getTime())
@@ -55,7 +58,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
         <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg p-4 mt-4 relative">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
                 
-                {/* --- GRÁFICO DE ONDA --- */}
+                {/* --- GRÁFICO DE ONDA COM LINHA DE REFERÊNCIA --- */}
                 <div>
                     <div className="flex justify-center items-center space-x-4 mb-2">
                         <div className="flex items-center space-x-2">
@@ -83,11 +86,12 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                                     <Cell key={`cell-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : primaryColor} />
                                 ))}
                             </Bar>
+                            <ReferenceLine y={spotPreferences.ideal_wave_height} stroke={getScoreColor(spotlightHour.detailed_scores.wave_score)}  strokeDasharray="3 3" />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
 
-                {/* --- GRÁFICO DE VENTO --- */}
+                {/* --- GRÁFICO DE VENTO COM LINHA DE REFERÊNCIA --- */}
                 <div>
                      <div className="flex justify-center items-center space-x-4 mb-2">
                         <div className="flex items-center space-x-2">
@@ -113,11 +117,12 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                                     <Cell key={`cell-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : primaryColor} />
                                 ))}
                             </Bar>
+                            <ReferenceLine y={spotPreferences.ideal_wind_speed} stroke={getScoreColor(spotlightHour.detailed_scores.wind_score)}  strokeDasharray="3 3" />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
 
-                {/* --- GRÁFICO DE MARÉ --- */}
+                {/* --- GRÁFICO DE MARÉ COM LINHA DE REFERÊNCIA --- */}
                 <div>
                      <div className="flex justify-center items-center space-x-4 mb-2">
                         <div className="flex items-center space-x-2">
@@ -143,11 +148,12 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                                     <Cell key={`cell-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : primaryColor} />
                                 ))}
                             </Bar>
+                            <ReferenceLine y={spotPreferences.ideal_sea_level} stroke={getScoreColor(spotlightHour.detailed_scores.tide_score)}  strokeDasharray="3 3" />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
 
-                {/* --- GRÁFICO DE TEMPERATURA --- */}
+                {/* --- GRÁFICO DE TEMPERATURA COM LINHAS DE REFERÊNCIA --- */}
                 <div>
                     <div className="flex justify-center items-center space-x-4 mb-2">
                         <div className="flex items-center space-x-2">
@@ -168,6 +174,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                             <XAxis dataKey="time" tick={{ fill: '#a0aec0', fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: '#a0aec0', fontSize: 10 }} domain={[0, 'auto']} unit="°C" />
                             <Tooltip content={<ForecastTooltip />} />
+                            <Legend wrapperStyle={{ fontSize: '11px', color: '#a0aec0' }} />
                             <Bar dataKey="water_temperature_sg" name="Water" unit="°C" fill="#3b82f6" barSize={12}>
                                 {chartData.map((entry) => (
                                     <Cell key={`cell-water-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : '#3b82f6'} />
@@ -175,9 +182,12 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                             </Bar>
                             <Bar dataKey="air_temperature_sg" name="Air" unit="°C" fill="#818cf8" barSize={12}>
                                 {chartData.map((entry) => (
-                                    <Cell key={`cell-air-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? '#ebef2f' : '#44450e'} />
+                                    <Cell key={`cell-air-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : '#818cf8'} />
                                 ))}
                             </Bar>
+                            <ReferenceLine y={spotPreferences.ideal_air_temperature} stroke={getScoreColor(spotlightHour.detailed_scores.air_temperature_score)}  strokeDasharray="3 3" />
+                            <ReferenceLine y={spotPreferences.ideal_water_temperature} stroke={getScoreColor(spotlightHour.detailed_scores.water_temperature_score)}  strokeDasharray="3 3" />
+
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>

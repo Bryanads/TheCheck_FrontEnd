@@ -41,15 +41,12 @@ export interface Forecast {
 }
 
 export interface DetailedScores {
-  wave_score: any;
-  wave_height_score: number;
-  swell_direction_score: number;
-  swell_period_score: number;
+  wave_score: number;
   wind_score: number;
   tide_score: number;
   water_temperature_score: number;
   air_temperature_score: number;
-  secondary_swell_impact: number;
+  current_score: number;
 }
 
 export interface HourlyRecommendation {
@@ -69,9 +66,40 @@ export interface DayOffsetRecommendations {
   recommendations: HourlyRecommendation[];
 }
 
+export interface SpotPreferences {
+  level_preference_id?: number;
+  spot_id: number;
+  surf_level?: string;
+  min_wave_height: number;
+  max_wave_height: number;
+  ideal_wave_height: number;
+  min_wave_period: number;
+  max_wave_period: number;
+  ideal_wave_period: number;
+  min_swell_height: number;
+  max_swell_height: number;
+  ideal_swell_height: number;
+  min_swell_period: number;
+  max_swell_period: number;
+  ideal_swell_period: number;
+  preferred_wave_direction: string;
+  preferred_swell_direction: string;
+  ideal_tide_type: string;
+  min_sea_level: number;
+  max_sea_level: number;
+  ideal_sea_level: number;
+  min_wind_speed: number;
+  max_wind_speed: number;
+  ideal_wind_speed: number;
+  preferred_wind_direction: string;
+  ideal_water_temperature: number;
+  ideal_air_temperature: number;
+}
+
 export interface SpotRecommendation {
   spot_name: string;
   spot_id: number;
+  preferences_used_for_spot: SpotPreferences; // <-- PROPRIEDADE CORRIGIDA
   day_offsets: DayOffsetRecommendations[];
 }
 
