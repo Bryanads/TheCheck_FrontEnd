@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getSpots, getRecommendations, getPresets } from '../services/api';
 import { Spot, SpotRecommendation, Preset, RecommendationFilters } from '../types';
 import { RecommendationFilter } from '../components/recommendation/RecommendationFilter';
 import { RecommendationList } from '../components/recommendation/RecommendationList';
 
-// Chaves de cache
+// Chaves de cache para armazenamento local e de sessão
 const RECOMMENDATIONS_CACHE_KEY = 'thecheck_recommendations';
 const DEFAULT_PRESET_CACHE_KEY = 'thecheck_default_preset';
+const SPOTS_CACHE_KEY = 'thecheck_spots';
 
 const RecommendationsPage: React.FC = () => {
     const { userId } = useAuth();
-    
-    // Estados principais gerenciados pela página
+
+    // Estados principais do componente
     const [spots, setSpots] = useState<Spot[]>([]);
     const [presets, setPresets] = useState<Preset[]>([]);
     const [recommendations, setRecommendations] = useState<SpotRecommendation[]>([]);
@@ -20,21 +21,89 @@ const RecommendationsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Função para buscar as recomendações, chamada pelo componente de filtro
+    // Ref para controlar se a busca inicial já foi feita e evitar repetições
+    const initialSearchPerformed = useRef(false);
+
+    // EFEITO 1: Carregar dados estáticos (spots e presets) apenas uma vez.
+    useEffect(() => {
+        if (!userId) return;
+
+        const loadStaticData = async () => {
+            try {
+                // --- Lógica de Presets (Cache-First) ---
+                const cachedPresetStr = localStorage.getItem(DEFAULT_PRESET_CACHE_KEY);
+                let presetsData: Preset[] = cachedPresetStr ? JSON.parse(cachedPresetStr) : [];
+
+                if (presetsData.length === 0) {
+                    presetsData = await getPresets(userId);
+                    const serverDefaultPreset = presetsData.find(p => p.is_default);
+                    if (serverDefaultPreset) {
+                        // Garante que sempre salvamos um array no cache
+                        localStorage.setItem(DEFAULT_PRESET_CACHE_KEY, JSON.stringify([serverDefaultPreset]));
+                    }
+                }
+                setPresets(presetsData);
+
+                // --- Lógica de Spots (Cache-First) ---
+                const cachedSpotsStr = sessionStorage.getItem(SPOTS_CACHE_KEY);
+                if (cachedSpotsStr) {
+                    setSpots(JSON.parse(cachedSpotsStr));
+                } else {
+                    const spotsData = await getSpots();
+                    setSpots(spotsData);
+                    sessionStorage.setItem(SPOTS_CACHE_KEY, JSON.stringify(spotsData));
+                }
+
+            } catch (err) {
+                // Se houver qualquer erro ao buscar dados iniciais, define a mensagem de erro E PARA o loading.
+                setError('Failed to load initial data.');
+                setLoading(false);
+            }
+        };
+
+        loadStaticData();
+    }, [userId]); // Depende apenas do userId para executar
+
+    // EFEITO 2: Definir os filtros iniciais assim que os spots e presets estiverem carregados.
+    useEffect(() => {
+        // Roda apenas se tivermos spots e presets e ainda não tivermos definido os filtros
+        if (spots.length > 0 && presets.length > 0 && !activeFilters) {
+            const defaultPreset = presets.find(p => p.is_default);
+            let initialFilters: RecommendationFilters;
+
+            if (defaultPreset) {
+                initialFilters = {
+                    selectedSpotIds: defaultPreset.spot_ids,
+                    dayOffset: defaultPreset.day_offset_default,
+                    startTime: defaultPreset.start_time,
+                    endTime: defaultPreset.end_time,
+                };
+            } else {
+                // Fallback se não houver preset padrão, usa o primeiro spot da lista
+                initialFilters = {
+                    selectedSpotIds: [spots[0].spot_id],
+                    dayOffset: [0],
+                    startTime: '06:00',
+                    endTime: '18:00',
+                };
+            }
+            setActiveFilters(initialFilters);
+        }
+    }, [spots, presets, activeFilters]); // Roda quando os dados de base chegam
+
+    // Função de busca, otimizada com useCallback para ser passada como prop
     const handleSearch = useCallback(async (filters: RecommendationFilters) => {
         if (!userId) return;
-        
-        setActiveFilters(filters);
+
         setLoading(true);
         setError(null);
-        
         try {
             const data = {
                 user_id: userId,
                 spot_ids: filters.selectedSpotIds,
                 day_offset: filters.dayOffset,
                 start_time: filters.startTime,
-                end_time: filters.endTime
+                end_time: filters.endTime,
             };
             const result = await getRecommendations(data);
             setRecommendations(result);
@@ -47,69 +116,28 @@ const RecommendationsPage: React.FC = () => {
         }
     }, [userId]);
 
-    // Efeito para carregar dados iniciais e definir filtros padrão
+    // EFEITO 3: Executar a busca inicial (ou carregar do cache)
     useEffect(() => {
-        if (!userId) return;
+        // Não faz nada até que os filtros ativos sejam definidos
+        if (!activeFilters) return;
 
-        const initialize = async () => {
-            setLoading(true);
-            try {
-                // Carrega spots e presets da API
-                const [spotsData, presetsData] = await Promise.all([getSpots(), getPresets(userId)]);
-                setSpots(spotsData);
-                setPresets(presetsData);
+        // Previne que a busca inicial rode novamente se os filtros mudarem por outra razão
+        if (initialSearchPerformed.current) return;
 
-                // Carrega recomendações do cache da sessão, se existirem
-                const cachedRecs = sessionStorage.getItem(RECOMMENDATIONS_CACHE_KEY);
-                if (cachedRecs) {
-                    setRecommendations(JSON.parse(cachedRecs));
-                }
+        const cachedRecs = sessionStorage.getItem(RECOMMENDATIONS_CACHE_KEY);
+        if (cachedRecs) {
+            setRecommendations(JSON.parse(cachedRecs));
+            setLoading(false);
+        } else {
+            // Se não houver cache, executa a busca com os filtros iniciais
+            handleSearch(activeFilters);
+        }
 
-                // Define os filtros iniciais (do cache de preset ou do padrão da API)
-                let initialFilters: RecommendationFilters | null = null;
-                const cachedPresetStr = localStorage.getItem(DEFAULT_PRESET_CACHE_KEY);
-                const serverDefaultPreset = presetsData.find(p => p.is_default);
+        // Marca a busca inicial como concluída para não repetir
+        initialSearchPerformed.current = true;
 
-                if (serverDefaultPreset) {
-                    localStorage.setItem(DEFAULT_PRESET_CACHE_KEY, JSON.stringify(serverDefaultPreset));
-                }
-                
-                const presetToUse = cachedPresetStr ? JSON.parse(cachedPresetStr) : serverDefaultPreset;
+    }, [activeFilters, handleSearch]); // Depende dos filtros estarem prontos
 
-                if (presetToUse) {
-                    initialFilters = {
-                        selectedSpotIds: presetToUse.spot_ids,
-                        dayOffset: presetToUse.day_offset_default,
-                        startTime: presetToUse.start_time,
-                        endTime: presetToUse.end_time,
-                    };
-                } else if (spotsData.length > 0) {
-                     initialFilters = {
-                        selectedSpotIds: [spotsData[0].spot_id],
-                        dayOffset: [0],
-                        startTime: '06:00',
-                        endTime: '18:00',
-                    };
-                }
-                
-                setActiveFilters(initialFilters);
-
-                // Se não houver cache de recomendações e houver filtros, busca na API
-                if (!cachedRecs && initialFilters) {
-                    await handleSearch(initialFilters);
-                } else {
-                    setLoading(false);
-                }
-
-            } catch (err) {
-                setError('Failed to load initial data.');
-                setLoading(false);
-            }
-        };
-
-        initialize();
-    }, [userId, handleSearch]);
-    
     return (
         <div className="space-y-8">
             <RecommendationFilter
@@ -117,7 +145,7 @@ const RecommendationsPage: React.FC = () => {
                 presets={presets}
                 initialFilters={activeFilters}
                 onSearch={handleSearch}
-                loading={loading && recommendations.length === 0} // Mostra loading no botão apenas na busca inicial
+                loading={loading && recommendations.length === 0}
             />
             <RecommendationList
                 recommendations={recommendations}
