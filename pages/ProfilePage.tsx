@@ -1,4 +1,3 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-f03cde61b76c4dc92c43cdfdefb847af8ae2bc19/pages/ProfilePage.tsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { updateUserProfile } from '../services/api';
@@ -15,8 +14,8 @@ const ProfilePage: React.FC = () => {
             setFormData({
                 name: user.name,
                 surf_level: user.surf_level,
-                goofy_regular_stance: user.goofy_regular_stance || 'Regular', // Garante um valor padrão
-                preferred_wave_direction: user.preferred_wave_direction || 'Both', // Garante um valor padrão
+                goofy_regular_stance: user.goofy_regular_stance || 'Regular', 
+                preferred_wave_direction: user.preferred_wave_direction || 'Both', 
                 bio: user.bio,
             });
         }

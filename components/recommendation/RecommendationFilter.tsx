@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Spot, Preset, RecommendationFilters } from '../../types';
 import { FilterIcon, ChevronDownIcon, CheckIcon } from '../icons';
+import { toUTCTime } from '../../utils/utils'; 
 
 interface RecommendationFilterProps {
     spots: Spot[];
@@ -13,13 +14,11 @@ interface RecommendationFilterProps {
 export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spots, presets, initialFilters, onSearch, loading }) => {
     const [isFilterVisible, setIsFilterVisible] = useState(false);
     
-    // Estado interno para gerenciar os filtros
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>([]);
     const [dayOffset, setDayOffset] = useState([0]);
     const [startTime, setStartTime] = useState('06:00');
     const [endTime, setEndTime] = useState('18:00');
 
-    // Sincroniza o estado interno com os filtros iniciais recebidos via props
     useEffect(() => {
         if (initialFilters) {
             setSelectedSpotIds(initialFilters.selectedSpotIds);
@@ -36,13 +35,21 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
     const handlePresetApply = (preset: Preset) => {
         setSelectedSpotIds(preset.spot_ids);
         setDayOffset(preset.day_offset_default);
-        setStartTime(preset.start_time);
-        setEndTime(preset.end_time);
+        setStartTime(preset.start_time.substring(0, 5)); 
+        setEndTime(preset.end_time.substring(0, 5));
     };
 
     const handleSearchClick = () => {
         if (selectedSpotIds.length > 0) {
-            onSearch({ selectedSpotIds, dayOffset, startTime, endTime });
+            const utcStartTime = toUTCTime(startTime);
+            const utcEndTime = toUTCTime(endTime);
+
+            onSearch({ 
+                selectedSpotIds, 
+                dayOffset, 
+                startTime: utcStartTime, 
+                endTime: utcEndTime 
+            });
         }
     };
     
@@ -93,7 +100,7 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                             </select>
                         </div>
                         <div className="flex flex-col">
-                            <label className="block text-slate-300 font-medium mb-2">Time Range</label>
+                            <label className="block text-slate-300 font-medium mb-2">Time Range (Local)</label>
                             <div className="flex items-center space-x-2">
                                 <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>
                                 <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>

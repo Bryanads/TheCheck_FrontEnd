@@ -1,7 +1,16 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-f03cde61b76c4dc92c43cdfdefb847af8ae2bc19/context/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { User } from '../types';
 import { getUserProfile } from '../services/api';
+
+// --- CHAVES DE CACHE CENTRALIZADAS E EXPORTADAS ---
+export const TOKEN_KEY = 'thecheck_token';
+export const USER_ID_KEY = 'thecheck_userId';
+export const USER_PROFILE_CACHE_KEY = 'thecheck_user_profile';
+export const RECOMMENDATIONS_CACHE_KEY = 'thecheck_recommendations';
+export const SPOTS_CACHE_KEY = 'thecheck_spots';
+export const DEFAULT_PRESET_LOCAL_CACHE_KEY = 'thecheck_default_preset';
+export const PRESETS_SESSION_CACHE_KEY = 'thecheck_presets';
+
 
 interface AuthContextType {
   token: string | null;
@@ -11,7 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (token: string, userId: string) => void;
   logout: () => void;
-  updateUser: (user: User) => void; // Nova função
+  updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,8 +32,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('thecheck_token');
-    const storedUserId = localStorage.getItem('thecheck_userId');
+    const storedToken = localStorage.getItem(TOKEN_KEY);
+    const storedUserId = localStorage.getItem(USER_ID_KEY);
     if (storedToken && storedUserId) {
       setToken(storedToken);
       setUserId(storedUserId);
@@ -35,9 +44,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const fetchUser = async () => {
       if (userId) {
+        const cachedUserStr = sessionStorage.getItem(USER_PROFILE_CACHE_KEY);
+        if (cachedUserStr) {
+          setUser(JSON.parse(cachedUserStr));
+          return;
+        }
+
         try {
           const profile = await getUserProfile(userId);
           setUser(profile);
+          sessionStorage.setItem(USER_PROFILE_CACHE_KEY, JSON.stringify(profile));
         } catch (error) {
           console.error("Failed to fetch user profile, logging out.", error);
           logout();
@@ -51,22 +67,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [userId]);
 
   const login = (newToken: string, newUserId: string) => {
-    localStorage.setItem('thecheck_token', newToken);
-    localStorage.setItem('thecheck_userId', newUserId);
+    localStorage.setItem(TOKEN_KEY, newToken);
+    localStorage.setItem(USER_ID_KEY, newUserId);
     setToken(newToken);
     setUserId(newUserId);
   };
 
   const logout = () => {
-    localStorage.removeItem('thecheck_token');
-    localStorage.removeItem('thecheck_userId');
     setToken(null);
     setUserId(null);
     setUser(null);
+
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_ID_KEY);
+    localStorage.removeItem(DEFAULT_PRESET_LOCAL_CACHE_KEY);
+
+    sessionStorage.removeItem(USER_PROFILE_CACHE_KEY);
+    sessionStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
+    sessionStorage.removeItem(SPOTS_CACHE_KEY);
+    sessionStorage.removeItem(PRESETS_SESSION_CACHE_KEY);
   };
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
+    sessionStorage.setItem(USER_PROFILE_CACHE_KEY, JSON.stringify(updatedUser));
   };
 
   return (

@@ -1,6 +1,5 @@
 import React from 'react';
 import { DayOffsetRecommendations } from '../../types';
-// Certifique-se de que ClockIcon e ChevronDownIcon estão sendo importados do seu arquivo de ícones
 import { ClockIcon, ChevronDownIcon } from '../icons'; 
 
 interface DaySummaryCardProps {
@@ -8,12 +7,11 @@ interface DaySummaryCardProps {
     onExpand: () => void;
 }
 
-// Função para mapear a pontuação média para uma classificação textual e uma cor
 const getRatingDetails = (score: number): { text: string; color: string } => {
     if (score > 90) return { text: 'Clássico', color: 'text-cyan-400' };
     if (score > 80) return { text: 'Muito Bom', color: 'text-green-400' };
-    if (score > 65) return { text: 'Bom', color: 'text-emerald-500' };
-    if (score > 50) return { text: 'Surfável', color: 'text-yellow-500' };
+    if (score > 75) return { text: 'Bom', color: 'text-emerald-500' };
+    if (score > 60) return { text: 'Surfável', color: 'text-yellow-500' };
     if (score > 30) return { text: 'Ruim', color: 'text-orange-500' };
     return { text: 'Muito Ruim', color: 'text-red-500' };
 };
@@ -42,7 +40,6 @@ export const DaySummaryCard: React.FC<DaySummaryCardProps> = ({ dayRec, onExpand
         const endTime = new Date(sortedRecs[sortedRecs.length - 1].timestamp_utc)
             .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-        // Se houver apenas uma hora recomendada, exibe de forma diferente
         if (startTime === endTime) {
             return `Às ${startTime}`;
         }
@@ -52,9 +49,8 @@ export const DaySummaryCard: React.FC<DaySummaryCardProps> = ({ dayRec, onExpand
 
     const averageScore = calculateAverageScore();
     const rating = getRatingDetails(averageScore);
-    const surfableHours = getSurfableHours(); // Chama a nova função
+    const surfableHours = getSurfableHours(); 
     
-    // Usamos a primeira recomendação (ou a data atual) para obter o dia da semana
     const dayDate = new Date(dayRec.recommendations[0]?.timestamp_utc || Date.now());
 
     return (

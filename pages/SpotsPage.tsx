@@ -29,9 +29,18 @@ const SpotsPage: React.FC = () => {
 
     useEffect(() => {
         const fetchSpots = async () => {
+            setLoading(true);
             try {
-                const data = await getSpots();
-                setSpots(data);
+                // 1. Tenta carregar do cache da sessão primeiro
+                const cachedSpotsStr = sessionStorage.getItem('thecheck_spots');
+                if (cachedSpotsStr) {
+                    setSpots(JSON.parse(cachedSpotsStr));
+                } else {
+                    // 2. Se não houver cache, busca na API e salva
+                    const data = await getSpots();
+                    setSpots(data);
+                    sessionStorage.setItem('thecheck_spots', JSON.stringify(data));
+                }
             } catch (err: any) {
                 setError(err.message || 'Failed to fetch spots.');
             } finally {
