@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Spot, Preset, RecommendationFilters } from '../../types';
 import { FilterIcon, ChevronDownIcon, CheckIcon } from '../icons';
-import { toUTCTime } from '../../utils/utils'; 
+import { toUTCTime, toLocalTime } from '../../utils/utils'; 
 
 interface RecommendationFilterProps {
     spots: Spot[];
@@ -14,17 +14,19 @@ interface RecommendationFilterProps {
 export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spots, presets, initialFilters, onSearch, loading }) => {
     const [isFilterVisible, setIsFilterVisible] = useState(false);
     
+    // O estado interno agora armazena e exibe horários locais
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>([]);
     const [dayOffset, setDayOffset] = useState([0]);
     const [startTime, setStartTime] = useState('06:00');
     const [endTime, setEndTime] = useState('18:00');
 
+    // Sincroniza o estado interno, convertendo os horários UTC para local
     useEffect(() => {
         if (initialFilters) {
             setSelectedSpotIds(initialFilters.selectedSpotIds);
             setDayOffset(initialFilters.dayOffset);
-            setStartTime(initialFilters.startTime);
-            setEndTime(initialFilters.endTime);
+            setStartTime(toLocalTime(initialFilters.startTime));
+            setEndTime(toLocalTime(initialFilters.endTime));
         }
     }, [initialFilters]);
 
@@ -35,12 +37,14 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
     const handlePresetApply = (preset: Preset) => {
         setSelectedSpotIds(preset.spot_ids);
         setDayOffset(preset.day_offset_default);
-        setStartTime(preset.start_time.substring(0, 5)); 
-        setEndTime(preset.end_time.substring(0, 5));
+        // Converte os horários UTC do preset para local antes de preencher o formulário
+        setStartTime(toLocalTime(preset.start_time)); 
+        setEndTime(toLocalTime(preset.end_time));
     };
 
     const handleSearchClick = () => {
         if (selectedSpotIds.length > 0) {
+            // Converte os horários locais do formulário para UTC antes de enviar para a API
             const utcStartTime = toUTCTime(startTime);
             const utcEndTime = toUTCTime(endTime);
 

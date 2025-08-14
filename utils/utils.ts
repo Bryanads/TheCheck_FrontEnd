@@ -1,6 +1,5 @@
 /**
  * Converte um ângulo em graus para direção cardeal.
- * 0° ou 360° → N, 90° → E, 180° → S, 270° → W, etc.
  * @param degrees valor em graus (0-360)
  * @returns direção cardeal (N, NNE, NE, ENE, etc.)
  */
@@ -14,7 +13,6 @@ export function degreesToCardinal(degrees: number): string {
     "W", "WNW", "NW", "NNW"
   ];
 
-  // cada direção ocupa 22.5°
   const index = Math.round(((degrees % 360) / 22.5)) % 16;
   return directions[index];
 }
@@ -32,13 +30,12 @@ export const toUTCTime = (localTime: string): string => {
 
     const utcHours = date.getUTCHours().toString().padStart(2, '0');
     const utcMinutes = date.getUTCMinutes().toString().padStart(2, '0');
-    // Retorna no formato HH:mm:ss para o backend
     return `${utcHours}:${utcMinutes}:00`; 
 };
 
 /**
- * Converte uma string de horário UTC (HH:mm:ss) para uma string de horário local (HH:mm).
- * @param utcTime Horário UTC no formato "HH:mm:ss".
+ * Converte uma string de horário UTC (HH:mm ou HH:mm:ss) para uma string de horário local (HH:mm).
+ * @param utcTime Horário UTC no formato "HH:mm" ou "HH:mm:ss".
  * @returns Horário local no formato "HH:mm".
  */
 export const toLocalTime = (utcTime: string): string => {
