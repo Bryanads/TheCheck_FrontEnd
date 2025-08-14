@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SpotRecommendation } from '../../types';
 import { DaySummaryCard } from './DaySummaryCard';
-import { ExpandedDayView } from './ExpandedDayView'; // Importa a nova vista
+import { ExpandedDayView } from './ExpandedDayView'; 
 import { WaveIcon } from '../icons';
 
 interface RecommendationListProps {
