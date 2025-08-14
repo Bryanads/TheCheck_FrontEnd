@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { SpotRecommendation, HourlyRecommendation } from '../../types';
-import { RecommendationCard } from './RecommendationCard';
+import { SpotRecommendation } from '../../types';
 import { DaySummaryCard } from './DaySummaryCard';
-import { HourlyForecastCharts } from './HourlyForecastCharts';
+import { ExpandedDayView } from './ExpandedDayView'; // Importa a nova vista
 import { WaveIcon } from '../icons';
 
 interface RecommendationListProps {
@@ -12,31 +11,13 @@ interface RecommendationListProps {
 }
 
 export const RecommendationList: React.FC<RecommendationListProps> = ({ recommendations, loading, error }) => {
-    const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-    const [spotlightHour, setSpotlightHour] = useState<HourlyRecommendation | null>(null);
+    const [expandedDayKey, setExpandedDayKey] = useState<string | null>(null);
 
     const toggleExpand = (key: string) => {
-        setExpandedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(key)) {
-                newSet.delete(key);
-                setSpotlightHour(null); // Fecha o gráfico ao colapsar o dia
-            } else {
-                newSet.add(key);
-            }
-            return newSet;
-        });
+        // Se o mesmo dia for clicado, fecha. Caso contrário, abre o novo dia.
+        setExpandedDayKey(prevKey => (prevKey === key ? null : key));
     };
-
-    const handleCardClick = (rec: HourlyRecommendation) => {
-        // Se o gráfico já estiver aberto para este card, fecha-o. Caso contrário, abre-o.
-        setSpotlightHour(prev => prev?.timestamp_utc === rec.timestamp_utc ? null : rec);
-    };
-
-    const closeChartView = () => {
-        setSpotlightHour(null);
-    };
-
+    
     // ... (as seções de loading, erro e estado inicial permanecem as mesmas)
     if (loading && recommendations.length === 0) {
         return <div className="text-center p-10"><div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div><p className="mt-4 text-slate-300">Checking the surf for you...</p></div>;
@@ -56,35 +37,16 @@ export const RecommendationList: React.FC<RecommendationListProps> = ({ recommen
                     <div className="space-y-3">
                         {spotRec.day_offsets.map(dayRec => {
                             const key = `${spotRec.spot_id}-${dayRec.day_offset}`;
-                            const isExpanded = expandedItems.has(key);
-                            const isShowingChart = spotlightHour && dayRec.recommendations.some(r => r.timestamp_utc === spotlightHour.timestamp_utc);
+                            const isExpanded = expandedDayKey === key;
 
                             return (
                                 <div key={key}> 
-                                    <DaySummaryCard dayRec={dayRec} onExpand={() => toggleExpand(key)} />
-                                    {isExpanded && (
-                                        <div className="mb-6">
-                                            {isShowingChart ? (
-                                                <HourlyForecastCharts 
-                                                    allHoursData={dayRec.recommendations}
-                                                    spotlightHour={spotlightHour}
-                                                    onClose={closeChartView}
-                                                />
-                                            ) : (
-                                                <div className="flex overflow-x-auto space-x-4 pb-4 pt-4 snap-x snap-mandatory">
-                                                    {dayRec.recommendations
-                                                        .sort((a, b) => new Date(a.timestamp_utc).getTime() - new Date(b.timestamp_utc).getTime())
-                                                        .map(rec => (
-                                                            <RecommendationCard 
-                                                                key={rec.timestamp_utc} 
-                                                                rec={rec}
-                                                                onClick={() => handleCardClick(rec)} 
-                                                            />
-                                                        ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                    <DaySummaryCard 
+                                        dayRec={dayRec} 
+                                        onExpand={() => toggleExpand(key)}
+                                        isExpanded={isExpanded} // Passa o estado para o summary card
+                                    />
+                                    {isExpanded && <ExpandedDayView dayRec={dayRec} />}
                                 </div>
                             );
                         })}
