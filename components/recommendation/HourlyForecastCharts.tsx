@@ -42,7 +42,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
             originalRec: rec 
         }));
 
-    const primaryColor = '#1e293b';
+    const primaryColor = '#435f6d';
     const spotlightColor = '#22d3ee';
 
     const handleChartClick = (data: any) => {
@@ -78,7 +78,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                             <XAxis dataKey="time" tick={{ fill: '#a0aec0', fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: '#a0aec0', fontSize: 10 }} domain={[0, 'auto']} unit="m" />
                             <Tooltip content={<ForecastTooltip />} cursor={{ fill: 'rgba(45, 55, 72, 0.8)' }} />
-                            <Bar dataKey="wave_height_sg" name="Height" unit="m" maxBarSize={16}>
+                            <Bar dataKey="wave_height_sg" name="Height" unit="m" maxBarSize={32}>
                                 {chartData.map((entry) => (
                                     <Cell key={`cell-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : primaryColor} />
                                 ))}
@@ -108,7 +108,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                             <XAxis dataKey="time" tick={{ fill: '#a0aec0', fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: '#a0aec0', fontSize: 10 }} domain={[0, 'auto']} unit=" m/s" />
                             <Tooltip content={<ForecastTooltip />} cursor={{ fill: 'rgba(45, 55, 72, 0.8)' }} />
-                            <Bar dataKey="wind_speed_sg" name="Speed" unit=" m/s" maxBarSize={16}>
+                            <Bar dataKey="wind_speed_sg" name="Speed" unit=" m/s" maxBarSize={32}>
                                 {chartData.map((entry) => (
                                     <Cell key={`cell-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : primaryColor} />
                                 ))}
@@ -138,7 +138,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                             <XAxis dataKey="time" tick={{ fill: '#a0aec0', fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: '#a0aec0', fontSize: 10 }} domain={['auto', 'auto']} unit="m" />
                             <Tooltip content={<ForecastTooltip />} cursor={{ fill: 'rgba(45, 55, 72, 0.8)' }} />
-                            <Bar dataKey="sea_level_sg" name="Level" unit="m" maxBarSize={16}>
+                            <Bar dataKey="sea_level_sg" name="Level" unit="m" maxBarSize={32}>
                                 {chartData.map((entry) => (
                                     <Cell key={`cell-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : primaryColor} />
                                 ))}
@@ -168,7 +168,6 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                             <XAxis dataKey="time" tick={{ fill: '#a0aec0', fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fill: '#a0aec0', fontSize: 10 }} domain={[0, 'auto']} unit="°C" />
                             <Tooltip content={<ForecastTooltip />} />
-                            <Legend wrapperStyle={{ fontSize: '11px', color: '#a0aec0' }} />
                             <Bar dataKey="water_temperature_sg" name="Water" unit="°C" fill="#3b82f6" barSize={12}>
                                 {chartData.map((entry) => (
                                     <Cell key={`cell-water-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : '#3b82f6'} />
@@ -176,7 +175,7 @@ export const HourlyForecastCharts: React.FC<HourlyForecastChartsProps> = ({ allH
                             </Bar>
                             <Bar dataKey="air_temperature_sg" name="Air" unit="°C" fill="#818cf8" barSize={12}>
                                 {chartData.map((entry) => (
-                                    <Cell key={`cell-air-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? spotlightColor : '#818cf8'} />
+                                    <Cell key={`cell-air-${entry.timestamp_utc}`} fill={entry.timestamp_utc === spotlightHour.timestamp_utc ? '#ebef2f' : '#44450e'} />
                                 ))}
                             </Bar>
                         </ComposedChart>
