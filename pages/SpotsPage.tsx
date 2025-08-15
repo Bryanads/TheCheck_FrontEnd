@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // NOVO
-import { getSpots } from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { THECHECK_CACHE_KEY } from '../context/AuthContext';
 import { Spot } from '../types';
 import { LocationMarkerIcon, WaveIcon } from '../components/icons';
 
@@ -21,27 +21,27 @@ const SpotsPage: React.FC = () => {
     const [spots, setSpots] = useState<Spot[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchSpots = async () => {
-            setLoading(true);
-            try {
-                const cachedSpotsStr = sessionStorage.getItem('thecheck_spots');
-                if (cachedSpotsStr) {
-                    setSpots(JSON.parse(cachedSpotsStr));
-                } else {
-                    const data = await getSpots();
-                    setSpots(data);
-                    sessionStorage.setItem('thecheck_spots', JSON.stringify(data));
-                }
-            } catch (err: any) {
-                setError(err.message || 'Failed to fetch spots.');
-            } finally {
-                setLoading(false);
+        setLoading(true);
+        setError(null);
+        try {
+            const cachedDataStr = localStorage.getItem(THECHECK_CACHE_KEY);
+            if (cachedDataStr) {
+                const cache = JSON.parse(cachedDataStr);
+                setSpots(cache.spots || []);
+            } else {
+                // Se o cache não existir, redireciona para a página de carregamento para reconstruí-lo.
+                navigate('/loading');
             }
-        };
-        fetchSpots();
-    }, []);
+        } catch (err: any) {
+            setError('Falha ao carregar spots do cache. Os dados podem estar corrompidos.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [navigate]);
 
     if (loading) {
         return (
@@ -52,7 +52,7 @@ const SpotsPage: React.FC = () => {
     }
 
     if (error) {
-        return <p className="text-center text-red-400">{error}</p>;
+        return <p className="text-center text-red-400 bg-red-900/50 p-4 rounded-md">{error}</p>;
     }
 
     return (

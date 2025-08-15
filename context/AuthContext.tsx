@@ -5,12 +5,8 @@ import { getUserProfile } from '../services/api';
 // --- CHAVES DE CACHE CENTRALIZADAS E EXPORTADAS ---
 export const TOKEN_KEY = 'thecheck_token';
 export const USER_ID_KEY = 'thecheck_userId';
-export const USER_PROFILE_CACHE_KEY = 'thecheck_user_profile';
-export const RECOMMENDATIONS_CACHE_KEY = 'thecheck_recommendations';
-export const SPOTS_CACHE_KEY = 'thecheck_spots';
-export const DEFAULT_PRESET_LOCAL_CACHE_KEY = 'thecheck_default_preset';
-export const PRESETS_SESSION_CACHE_KEY = 'thecheck_presets';
-
+export const USER_PROFILE_CACHE_KEY = 'thecheck_user_profile'; // Mantido para o perfil do usuário
+export const THECHECK_CACHE_KEY = 'thecheck_cache'; // Nova chave principal
 
 interface AuthContextType {
   token: string | null;
@@ -78,14 +74,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUserId(null);
     setUser(null);
 
+    // Limpa todas as chaves de cache relevantes
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_ID_KEY);
-    localStorage.removeItem(DEFAULT_PRESET_LOCAL_CACHE_KEY);
-
-    sessionStorage.removeItem(USER_PROFILE_CACHE_KEY);
-    sessionStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
-    sessionStorage.removeItem(SPOTS_CACHE_KEY);
-    sessionStorage.removeItem(PRESETS_SESSION_CACHE_KEY);
+    localStorage.removeItem(THECHECK_CACHE_KEY); // Limpa o cache principal
+    sessionStorage.clear(); // Limpa a sessão inteira
   };
 
   const updateUser = (updatedUser: User) => {

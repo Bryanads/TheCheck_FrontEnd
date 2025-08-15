@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Spot, Preset, RecommendationFilters } from '../../types';
-import { FilterIcon, ChevronDownIcon, CheckIcon, CogsIcon } from '../icons';
+import { FilterIcon, ChevronDownIcon, CheckIcon } from '../icons';
 import { toUTCTime, toLocalTime, weekdaysToDayOffset } from '../../utils/utils'; 
+
+const CUSTOM_FILTER_CACHE_KEY = 'thecheck_custom_filter_session';
 
 interface RecommendationFilterProps {
     spots: Spot[];
@@ -11,63 +13,70 @@ interface RecommendationFilterProps {
     loading: boolean;
 }
 
-export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spots, presets, initialFilters, onSearch, loading }) => {
-    // Estado para controlar a visibilidade do painel de filtros
+export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spots, presets, onSearch, loading }) => {
     const [isFilterVisible, setIsFilterVisible] = useState(false);
-    // Estado para controlar a aba ativa: 'preset' ou 'custom'
     const [activeTab, setActiveTab] = useState<'preset' | 'custom'>('preset');
-    // Estado para guardar o nome do preset ativo
     const [activePresetName, setActivePresetName] = useState<string | null>('Default');
 
-    // Estados para o formulário de filtro personalizado
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>([]);
     const [dayOffset, setDayOffset] = useState([0]);
     const [startTime, setStartTime] = useState('06:00');
     const [endTime, setEndTime] = useState('18:00');
 
-    // Sincroniza o estado do filtro personalizado com os filtros iniciais
     useEffect(() => {
-        if (initialFilters) {
-            setSelectedSpotIds(initialFilters.selectedSpotIds);
-            setDayOffset(initialFilters.dayOffset);
-            setStartTime(toLocalTime(initialFilters.startTime));
-            setEndTime(toLocalTime(initialFilters.endTime));
-            
-            // Tenta encontrar um preset que corresponda aos filtros iniciais
-            const matchingPreset = presets.find(p => p.is_default);
-            setActivePresetName(matchingPreset ? matchingPreset.preset_name : 'Custom Filter');
+        const defaultPreset = presets.find(p => p.is_default);
+        if (defaultPreset) {
+            setActivePresetName(defaultPreset.preset_name);
+        } else if (presets.length > 0) {
+            setActivePresetName(presets[0].preset_name);
         }
-    }, [initialFilters, presets]);
+
+        const cachedCustomFilter = sessionStorage.getItem(CUSTOM_FILTER_CACHE_KEY);
+        if (cachedCustomFilter) {
+            const filters: RecommendationFilters = JSON.parse(cachedCustomFilter);
+            setSelectedSpotIds(filters.selectedSpotIds);
+            setDayOffset(filters.dayOffset);
+            setStartTime(toLocalTime(filters.startTime));
+            setEndTime(toLocalTime(filters.endTime));
+            setActivePresetName('Custom Filter');
+            setActiveTab('custom');
+        } else if (defaultPreset) {
+            setSelectedSpotIds(defaultPreset.spot_ids);
+            setDayOffset(weekdaysToDayOffset(defaultPreset.weekdays));
+            setStartTime(toLocalTime(defaultPreset.start_time));
+            setEndTime(toLocalTime(defaultPreset.end_time));
+        }
+
+    }, [presets]);
 
     const handleSpotToggle = (spotId: number) => {
         setSelectedSpotIds(prev => prev.includes(spotId) ? prev.filter(id => id !== spotId) : [...prev, spotId]);
-        setActivePresetName('Custom Filter'); // Indica que a seleção é personalizada
+        setActivePresetName('Custom Filter');
     };
 
-    // Função chamada quando um preset é selecionado
     const handlePresetSearch = (preset: Preset) => {
-        const filters = {
+        const filters: RecommendationFilters = {
             selectedSpotIds: preset.spot_ids,
             dayOffset: weekdaysToDayOffset(preset.weekdays),
             startTime: preset.start_time,
             endTime: preset.end_time,
         };
         onSearch(filters);
-        setActivePresetName(preset.preset_name); // Define o nome do preset ativo
-        setIsFilterVisible(false); // Fecha o painel após a busca
+        setActivePresetName(preset.preset_name);
+        setIsFilterVisible(false);
     };
 
-    // Função chamada pelo botão de busca do filtro personalizado
     const handleCustomSearchClick = () => {
         if (selectedSpotIds.length > 0) {
-            onSearch({ 
+            const filters = { 
                 selectedSpotIds, 
                 dayOffset, 
                 startTime: toUTCTime(startTime), 
                 endTime: toUTCTime(endTime) 
-            });
-            setActivePresetName('Custom Filter'); // Define o filtro como personalizado
-            setIsFilterVisible(false); // Fecha o painel após a busca
+            };
+            onSearch(filters);
+            setActivePresetName('Custom Filter');
+            setIsFilterVisible(false);
         }
     };
     
@@ -89,7 +98,6 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
             
             {isFilterVisible && (
                 <div className="p-6 pt-0">
-                    {/* Abas para alternar entre os modos de filtro */}
                     <div className="flex border-b border-slate-700">
                         <button 
                             onClick={() => setActiveTab('preset')}
@@ -105,7 +113,6 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                         </button>
                     </div>
 
-                    {/* Conteúdo da Aba de Presets */}
                     {activeTab === 'preset' && (
                         <div className="pt-6">
                             <label className="block text-slate-300 font-medium mb-2">Selecione um Preset para buscar</label>
@@ -125,7 +132,6 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                         </div>
                     )}
 
-                    {/* Conteúdo da Aba de Filtro Personalizado */}
                     {activeTab === 'custom' && (
                         <div className="pt-6">
                             <div className="grid md:grid-cols-3 gap-6">

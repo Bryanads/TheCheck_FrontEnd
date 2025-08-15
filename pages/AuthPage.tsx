@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -19,15 +18,23 @@ const AuthPage: React.FC = () => {
     const data = Object.fromEntries(formData.entries());
 
     try {
+      let res: any;
       if (isLogin) {
-        const res: any = await loginUser({ email: data.email, password: data.password });
-        login(res.token, res.user_id);
+        res = await loginUser({ email: data.email, password: data.password });
       } else {
         await registerUser(data);
-        const res: any = await loginUser({ email: data.email, password: data.password });
-        login(res.token, res.user_id);
+        res = await loginUser({ email: data.email, password: data.password });
       }
-      navigate('/recommendations');
+      
+      // Limpa o cache antigo para garantir que os novos dados sejam buscados
+      localStorage.removeItem('thecheck_cache');
+      sessionStorage.clear();
+
+      login(res.token, res.user_id);
+      
+      // Redireciona para a página de carregamento para o fetch massivo
+      navigate('/loading');
+
     } catch (err: any) {
       setError(err.message || 'An error occurred.');
     } finally {
