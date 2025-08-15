@@ -45,7 +45,7 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
   };
   
   return (
-    <OnboardingLayout title={`Preferências para Spot ${spotId}`} step="Passo 2 de 3">
+    <OnboardingLayout title={`Definindo Preferências`} step="Passo 2 de 3" onBack={() => navigate('/onboarding/spots')}>
         <div className="space-y-6">
             <PreferenceFormSections preferences={preferences} handleChange={handleChange} />
             <button

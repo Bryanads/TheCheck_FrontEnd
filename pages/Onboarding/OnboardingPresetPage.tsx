@@ -108,7 +108,7 @@ const OnboardingPresetPage: React.FC = () => {
     };
 
     return (
-        <OnboardingLayout title="Último Passo!" step="Passo 3 de 3">
+        <OnboardingLayout title="Último Passo!" step="Passo 3 de 3" onBack={() => navigate('/onboarding/spots')}>
             <div className="space-y-6">
                 <div>
                     <label className="block text-slate-300 font-medium mb-2">Nome do Preset</label>
