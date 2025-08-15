@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { loginUser, registerUser } from '../services/api';
+import { useOnboarding } from '../context/OnboardingContext';
 
 const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { updateOnboardingData } = useOnboarding();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,23 +20,23 @@ const AuthPage: React.FC = () => {
     const data = Object.fromEntries(formData.entries());
 
     try {
-      let res: any;
       if (isLogin) {
-        res = await loginUser({ email: data.email, password: data.password });
+        const res = await loginUser({ email: data.email, password: data.password });
+        localStorage.removeItem('thecheck_cache');
+        sessionStorage.clear();
+        login(res.token, res.user_id);
+        navigate('/loading');
       } else {
-        await registerUser(data);
-        res = await loginUser({ email: data.email, password: data.password });
+        // Inicia o fluxo de onboarding
+        updateOnboardingData({
+          credentials: {
+            name: data.name as string,
+            email: data.email as string,
+            password: data.password as string,
+          },
+        });
+        navigate('/onboarding/profile');
       }
-      
-      // Limpa o cache antigo para garantir que os novos dados sejam buscados
-      localStorage.removeItem('thecheck_cache');
-      sessionStorage.clear();
-
-      login(res.token, res.user_id);
-      
-      // Redireciona para a página de carregamento para o fetch massivo
-      navigate('/loading');
-
     } catch (err: any) {
       setError(err.message || 'An error occurred.');
     } finally {
