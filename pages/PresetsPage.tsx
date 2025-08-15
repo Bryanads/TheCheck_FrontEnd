@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, THECHECK_CACHE_KEY } from '../context/AuthContext';
 import { createPreset, updatePreset, deletePreset, getRecommendations } from '../services/api';
@@ -166,7 +166,6 @@ const PresetsPage: React.FC = () => {
             const cache = JSON.parse(cachedDataStr);
             const updatedCache = updater(cache);
             localStorage.setItem(THECHECK_CACHE_KEY, JSON.stringify(updatedCache));
-            // Dispara um evento customizado para notificar outras partes da aplicação
             window.dispatchEvent(new Event('thecheck-cache-updated'));
         }
     };
@@ -252,24 +251,37 @@ const PresetsPage: React.FC = () => {
     const handleSetDefault = async (newDefaultPreset: Preset) => {
         if (!userId || newDefaultPreset.is_default || updatingPresetId) return;
         setUpdatingPresetId(newDefaultPreset.preset_id);
+    
         const originalPresets = [...presets];
         const oldDefault = originalPresets.find(p => p.is_default);
         const optimisticPresets = originalPresets.map(p => ({
             ...p, is_default: p.preset_id === newDefaultPreset.preset_id
         }));
         setPresets(optimisticPresets);
+
         try {
             const promises = [];
+            
+            // CORREÇÃO: Enviar o objeto completo do preset ao atualizar
             if (oldDefault) {
-                promises.push(updatePreset(oldDefault.preset_id, { is_default: false }));
+                const oldDefaultData = { ...oldDefault, is_default: false };
+                delete (oldDefaultData as Partial<Preset>).preset_id; // Boa prática remover o ID do corpo do PUT
+                promises.push(updatePreset(oldDefault.preset_id, oldDefaultData));
             }
-            promises.push(updatePreset(newDefaultPreset.preset_id, { is_default: true }));
+
+            const newDefaultData = { ...newDefaultPreset, is_default: true };
+            delete (newDefaultData as Partial<Preset>).preset_id; // Boa prática remover o ID do corpo do PUT
+            promises.push(updatePreset(newDefaultPreset.preset_id, newDefaultData));
+            
             await Promise.all(promises);
+
+            // Se a API confirmar, atualiza o cache permanentemente
             updateCache(cache => ({ ...cache, presets: optimisticPresets }));
+
         } catch (error) {
             console.error('Failed to update default preset', error);
             alert('Could not set the new default preset. Please try again.');
-            setPresets(originalPresets);
+            setPresets(originalPresets); // Reverte a UI em caso de erro na API
         } finally {
             setUpdatingPresetId(null);
         }
