@@ -1,25 +1,20 @@
-
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom'; // NOVO
 import { getSpots } from '../services/api';
 import { Spot } from '../types';
 import { LocationMarkerIcon, WaveIcon } from '../components/icons';
 
 const SpotCard: React.FC<{ spot: Spot }> = ({ spot }) => (
-    <div className="bg-slate-800 rounded-lg p-6 shadow-lg hover:shadow-cyan-500/20 transition-shadow transform hover:-translate-y-1">
+    <Link to={`/spots/${spot.spot_id}/preferences`} className="block bg-slate-800 rounded-lg p-6 shadow-lg hover:shadow-cyan-500/20 transition-shadow transform hover:-translate-y-1">
         <h3 className="text-xl font-bold text-white flex items-center"><WaveIcon className="mr-2 text-cyan-400" /> {spot.spot_name}</h3>
         <p className="text-slate-400 mt-2 flex items-center text-sm">
             <LocationMarkerIcon className="mr-2"/>
             Lat: {spot.latitude.toFixed(3)}, Lon: {spot.longitude.toFixed(3)}
         </p>
-         <a 
-            href={`https://www.google.com/maps/search/?api=1&query=${spot.latitude},${spot.longitude}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-block text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
-        >
-            View on Map &rarr;
-        </a>
-    </div>
+         <div className="mt-4 text-cyan-400 hover:text-cyan-300 font-medium transition-colors">
+            Set Preferences →
+        </div>
+    </Link>
 );
 
 const SpotsPage: React.FC = () => {
@@ -31,12 +26,10 @@ const SpotsPage: React.FC = () => {
         const fetchSpots = async () => {
             setLoading(true);
             try {
-                // 1. Tenta carregar do cache da sessão primeiro
                 const cachedSpotsStr = sessionStorage.getItem('thecheck_spots');
                 if (cachedSpotsStr) {
                     setSpots(JSON.parse(cachedSpotsStr));
                 } else {
-                    // 2. Se não houver cache, busca na API e salva
                     const data = await getSpots();
                     setSpots(data);
                     sessionStorage.setItem('thecheck_spots', JSON.stringify(data));

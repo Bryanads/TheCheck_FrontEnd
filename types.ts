@@ -67,9 +67,9 @@ export interface DayOffsetRecommendations {
 }
 
 export interface SpotPreferences {
-  level_preference_id?: number;
+  user_preference_id: number;
+  user_id: string;
   spot_id: number;
-  surf_level?: string;
   min_wave_height: number;
   max_wave_height: number;
   ideal_wave_height: number;
@@ -94,6 +94,7 @@ export interface SpotPreferences {
   preferred_wind_direction: string;
   ideal_water_temperature: number;
   ideal_air_temperature: number;
+  is_active: boolean
 }
 
 export interface SpotRecommendation {

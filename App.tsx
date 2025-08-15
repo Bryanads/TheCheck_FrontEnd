@@ -7,6 +7,7 @@ import RecommendationsPage from './pages/RecommendationsPage';
 import ProfilePage from './pages/ProfilePage';
 import PresetsPage from './pages/PresetsPage';
 import SpotsPage from './pages/SpotsPage';
+import SpotPreferencesPage from './pages/SpotPreferencesPage'; // NOVO
 import { Header } from './components/layout/Header';
 
 const App: React.FC = () => {
@@ -29,6 +30,7 @@ const App: React.FC = () => {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/recommendations" element={<RecommendationsPage />} />
           <Route path="/spots" element={<SpotsPage />} />
+          <Route path="/spots/:spotId/preferences" element={<SpotPreferencesPage />} /> {/* NOVO */}
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/presets" element={<PresetsPage />} />
         </Routes>

@@ -91,3 +91,28 @@ export const deletePreset = (presetId: number, userId: string) => {
     console.log(`Deletando o preset: ${presetId} para o usuário: ${userId}`);
     return apiFetch<{message: string}>(`/presets/${presetId}?user_id=${userId}`, { method: 'DELETE' });
 };
+
+// User Spot Preferences Endpoints
+export const getSpotPreferences = (userId: string, spotId: number) => {
+    console.log(`Buscando preferências para o usuário ${userId} no spot ${spotId}`);
+    return apiFetch<any>(`/user-spot-preferences/${userId}/${spotId}`);
+};
+
+export const setUserSpotPreferences = (userId: string, spotId: number, data: object) => {
+    console.log(`Salvando preferências para o usuário ${userId} no spot ${spotId}`);
+    return apiFetch<{message: string}>(`/user-spot-preferences/${userId}/${spotId}`, { method: 'POST', body: JSON.stringify(data) });
+};
+
+export const toggleSpotPreferenceActive = (userId: string, spotId: number, isActive: boolean) => {
+    console.log(`Setting preference for user ${userId} at spot ${spotId} to ${isActive ? 'active' : 'inactive'}`);
+    return apiFetch<{message: string}>(`/user-spot-preferences/${userId}/${spotId}/toggle`, {
+        method: 'PUT',
+        body: JSON.stringify({ is_active: isActive })
+    });
+};
+
+export const getLevelSpotPreferences = (userId: string, spotId: number) => {
+    console.log(`Fetching default level preferences for user ${userId} at spot ${spotId}`);
+    return apiFetch<any>(`/level-spot-preferences/${spotId}?user_id=${userId}`);
+};
+
