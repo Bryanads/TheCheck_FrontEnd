@@ -1,7 +1,9 @@
 import { User } from '../types';
 
-const API_BASE_URL = 'http://192.168.15.17:5000'; // Em casa
+// const API_BASE_URL = 'http://192.168.15.17:5000'; // Em casa
 // const API_BASE_URL = 'http://10.155.75.252:5000'; // Telefone
+const API_BASE_URL = 'https://thecheck-api.onrender.com'; // Teste
+
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
     const token = localStorage.getItem('thecheck_token');
