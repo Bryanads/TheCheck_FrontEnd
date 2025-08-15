@@ -1,17 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
-import { registerUser, updateUserProfile, setUserSpotPreferences, createPreset, loginUser, getSpots } from '../../services/api';
+import { getSpots } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Spot } from '../../types';
+import { OnboardingLayout } from '../../components/layout/OnboardingLayout';
+import { toUTCTime, toLocalTime } from '../../utils/utils';
+
+// Reutilizando o seletor de dias da semana do PresetsPage
+const WeekdaySelector: React.FC<{
+    selectedDays: number[];
+    onToggle: (dayIndex: number) => void;
+}> = ({ selectedDays, onToggle }) => {
+    const days = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+    return (
+        <div>
+            <label className="block text-slate-300 font-medium mb-2">Dias da Semana para o Check</label>
+            <div className="flex justify-between items-center space-x-1">
+                {days.map((day, index) => (
+                    <button
+                        key={index}
+                        type="button"
+                        onClick={() => onToggle(index)}
+                        className={`w-10 h-10 rounded-full font-bold transition-colors ${
+                            selectedDays.includes(index)
+                                ? 'bg-cyan-500 text-white'
+                                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                        }`}
+                    >
+                        {day}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 
 const OnboardingPresetPage: React.FC = () => {
     const navigate = useNavigate();
-    const { onboardingData, updateOnboardingData } = useOnboarding();
+    const { onboardingData, updateOnboardingData, finalizeOnboarding } = useOnboarding();
     const { login } = useAuth();
     const [spots, setSpots] = useState<Spot[]>([]);
+    
+    // Estados do formulário
     const [presetName, setPresetName] = useState('Meu Primeiro Preset');
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>([]);
+    const [startTime, setStartTime] = useState(toLocalTime(onboardingData.preset.start_time));
+    const [endTime, setEndTime] = useState(toLocalTime(onboardingData.preset.end_time));
+    const [weekdays, setWeekdays] = useState<number[]>([1,2,3,4,5]); // Padrão de Seg a Sex
+    
+    // Estados de controle
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -19,45 +58,47 @@ const OnboardingPresetPage: React.FC = () => {
         const fetchSpots = async () => {
             const spotsData = await getSpots();
             setSpots(spotsData);
+            // Pré-seleciona os spots para os quais o usuário definiu preferências
             setSelectedSpotIds(Object.keys(onboardingData.spotPreferences).map(Number));
         };
         fetchSpots();
     }, [onboardingData.spotPreferences]);
+
+    const handleWeekdayToggle = (dayIndex: number) => {
+        setWeekdays(prev =>
+            prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]
+        );
+    };
 
     const handleSpotToggle = (spotId: number) => {
         setSelectedSpotIds(prev => prev.includes(spotId) ? prev.filter(id => id !== spotId) : [...prev, spotId]);
     };
     
     const handleFinalize = async () => {
+        if (selectedSpotIds.length === 0) {
+            setError('Por favor, selecione pelo menos um spot para o seu preset.');
+            return;
+        }
         setLoading(true);
         setError(null);
-        try {
-            // 1. Registrar usuário
-            const { user_id } = await registerUser(onboardingData.credentials);
-
-            // 2. Atualizar perfil
-            await updateUserProfile(user_id, onboardingData.profile);
-
-            // 3. Salvar preferências dos spots
-            for (const spotId in onboardingData.spotPreferences) {
-                await setUserSpotPreferences(user_id, parseInt(spotId), onboardingData.spotPreferences[spotId]);
-            }
-
-            // 4. Criar preset
-            const presetData = {
+        
+        // Atualiza o contexto com os dados finais do preset antes de finalizar
+        updateOnboardingData({
+            preset: {
                 ...onboardingData.preset,
                 preset_name: presetName,
                 spot_ids: selectedSpotIds,
-                user_id: user_id,
-                is_default: true
-            };
-            await createPreset(presetData);
+                start_time: toUTCTime(startTime),
+                end_time: toUTCTime(endTime),
+                weekdays: weekdays,
+            }
+        });
 
-            // 5. Login
-            const { token } = await loginUser({ email: onboardingData.credentials.email, password: onboardingData.credentials.password });
-            login(token, user_id);
+        try {
+            const { token, userId } = await finalizeOnboarding(presetName, selectedSpotIds);
+            
+            login(token, userId);
 
-            // 6. Redirecionar para o loading da app principal
             navigate('/loading');
 
         } catch (err: any) {
@@ -67,11 +108,8 @@ const OnboardingPresetPage: React.FC = () => {
     };
 
     return (
-        <div className="max-w-2xl mx-auto">
-            <h1 className="text-4xl font-bold text-white mb-2">Último Passo!</h1>
-            <p className="text-slate-400 mb-8">Crie seu primeiro preset de busca.</p>
-
-            <div className="bg-slate-800 rounded-xl p-8 shadow-lg space-y-6">
+        <OnboardingLayout title="Último Passo!" step="Passo 3 de 3">
+            <div className="space-y-6">
                 <div>
                     <label className="block text-slate-300 font-medium mb-2">Nome do Preset</label>
                     <input type="text" value={presetName} onChange={(e) => setPresetName(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" required />
@@ -86,12 +124,25 @@ const OnboardingPresetPage: React.FC = () => {
                         ))}
                     </div>
                 </div>
+                
+                <WeekdaySelector selectedDays={weekdays} onToggle={handleWeekdayToggle} />
+
+                <div>
+                    <label className="block text-slate-300 font-medium mb-2">Seu Horário de Surf (Local)</label>
+                    <div className="flex items-center space-x-4">
+                        <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                        <span className="text-slate-400">até</span>
+                        <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                    </div>
+                </div>
+
                 {error && <p className="text-red-400 text-center">{error}</p>}
+
                 <button onClick={handleFinalize} disabled={loading} className="w-full bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-600 transition-all disabled:bg-slate-600 disabled:cursor-wait">
-                    {loading ? 'Finalizando...' : 'Finalizar Cadastro'}
+                    {loading ? 'Finalizando...' : 'Concluir e Surfar!'}
                 </button>
             </div>
-        </div>
+        </OnboardingLayout>
     );
 };
 
