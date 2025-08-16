@@ -15,6 +15,8 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUsingDefaults, setIsUsingDefaults] = useState(false);
+  // NOVO ESTADO: para guardar os erros de validação
+  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof SpotPreferences, boolean>>>({});
 
   useEffect(() => {
     const fetchDefaultPreferences = async () => {
@@ -37,9 +39,6 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
       try {
         const levelDefaults = await getLevelSpotPreferences(onboardingData.userId, parseInt(spotId));
         
-        // **A CORREÇÃO ESTÁ AQUI**
-        // Replicamos a lógica de limpeza do SpotPreferencesPage.tsx
-        // para garantir que o estado `preferences` contenha apenas chaves válidas.
         const validKeys: (keyof SpotPreferences)[] = [
             'min_wave_height', 'max_wave_height', 'ideal_wave_height', 'min_wave_period', 
             'max_wave_period', 'ideal_wave_period', 'min_swell_height', 'max_swell_height', 
@@ -52,8 +51,6 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
         
         const cleanedDefaults = validKeys.reduce<Partial<SpotPreferences>>((acc, key) => {
             if (levelDefaults[key] !== undefined) {
-                // Usamos 'as any' para contornar a checagem de tipo estrita aqui,
-                // pois sabemos que a chave existe em levelDefaults.
                 (acc as any)[key] = levelDefaults[key];
             }
             return acc;
@@ -75,6 +72,11 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    
+    if (validationErrors[name as keyof SpotPreferences]) {
+        setValidationErrors(prev => ({ ...prev, [name]: false }));
+    }
+
     const isCheckbox = type === 'checkbox';
     let inputValue: string | number | boolean;
 
@@ -88,13 +90,44 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
     setPreferences(prev => ({ ...prev, [name]: inputValue }));
     if (isUsingDefaults) setIsUsingDefaults(false);
   };
+
+  const validateForm = (): boolean => {
+      const fieldsToValidate: (keyof SpotPreferences)[] = [
+          'min_wave_height', 'max_wave_height', 'ideal_wave_height',
+          'min_wave_period', 'max_wave_period', 'ideal_wave_period',
+          'min_swell_height', 'max_swell_height', 'ideal_swell_height',
+          'min_swell_period', 'max_swell_period', 'ideal_swell_period',
+          'min_sea_level', 'max_sea_level', 'ideal_sea_level',
+          'min_wind_speed', 'max_wind_speed', 'ideal_wind_speed',
+          'ideal_water_temperature', 'ideal_air_temperature'
+      ];
+
+      const newErrors: Partial<Record<keyof SpotPreferences, boolean>> = {};
+      let isValid = true;
+
+      fieldsToValidate.forEach(field => {
+          if (preferences[field] == null || preferences[field] === '') {
+              newErrors[field] = true;
+              isValid = false;
+          }
+      });
+
+      setValidationErrors(newErrors);
+      return isValid;
+  };
   
   const handleSave = () => {
     if (!spotId) return;
+
+    if (!validateForm()) {
+        setError("Por favor, preencha todos os campos destacados.");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+
+    setError(null); // Limpa o erro se a validação passar
     const numericSpotId = parseInt(spotId);
     
-    // Agora o objeto `preferences` está limpo e esta desestruturação funciona sem erros.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user_preference_id, user_id, ...prefsToSave } = preferences;
 
     updateOnboardingData({
@@ -112,14 +145,18 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
 
   return (
     <OnboardingLayout title={`Definindo Preferências`} step="Passo 2 de 3" onBack={() => navigate('/onboarding/spots')}>
-        {error && <p className="text-red-400 bg-red-900/50 p-3 rounded mb-4">{error}</p>}
         {isUsingDefaults && (
             <div className="bg-blue-900/50 text-blue-200 p-3 rounded-md mb-4 text-center text-sm">
                 Pré-carregamos as preferências com base no seu nível de surf. Sinta-se à vontade para ajustar!
             </div>
         )}
         <div className="space-y-6">
-            <PreferenceFormSections preferences={preferences} handleChange={handleChange} />
+            {error && <p className="text-red-400 text-center pb-4">{error}</p>}
+            <PreferenceFormSections 
+              preferences={preferences} 
+              handleChange={handleChange} 
+              errors={validationErrors} 
+            />
             <button
               onClick={handleSave}
               className="w-full bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-600 transition-all"

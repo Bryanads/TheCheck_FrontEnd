@@ -10,7 +10,7 @@ import {
 } from '../services/api';
 import { SpotPreferences, Preset } from '../types';
 import { weekdaysToDayOffset } from '../utils/utils';
-import { PreferenceFormSections } from '../components/preferences/PreferenceFormFields'; // Importação
+import { PreferenceFormSections } from '../components/preferences/PreferenceFormFields';
 
 const SpotPreferencesPage: React.FC = () => {
   const { spotId } = useParams<{ spotId: string }>();
@@ -22,42 +22,48 @@ const SpotPreferencesPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUsingDefaults, setIsUsingDefaults] = useState(false);
+  // NOVO ESTADO: para guardar os erros de validação
+  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof SpotPreferences, boolean>>>({});
 
+  // ... (o useEffect para buscar os dados continua igual) ...
   useEffect(() => {
     if (!userId || !spotId) return;
-
     const fetchPreferences = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const userPrefs = await getSpotPreferences(userId, parseInt(spotId));
-        setPreferences(userPrefs);
-        setIsUsingDefaults(false);
-      } catch (err: any) {
-        if (err.message?.includes('não encontradas')) {
-          try {
-            const levelDefaults = await getLevelSpotPreferences(userId, parseInt(spotId));
-            setPreferences({ ...levelDefaults, is_active: true }); 
-            setIsUsingDefaults(true);
-          } catch {
-            setError('Nenhum padrão encontrado. Comece a criar suas preferências!');
-            setPreferences({ is_active: true });
-          }
-        } else {
-          setError(err.message || 'Erro ao carregar preferências.');
+        setLoading(true);
+        setError(null);
+        try {
+            const userPrefs = await getSpotPreferences(userId, parseInt(spotId));
+            setPreferences(userPrefs);
+            setIsUsingDefaults(false);
+        } catch (err: any) {
+            if (err.message?.includes('não encontradas')) {
+            try {
+                const levelDefaults = await getLevelSpotPreferences(userId, parseInt(spotId));
+                setPreferences({ ...levelDefaults, is_active: true }); 
+                setIsUsingDefaults(true);
+            } catch {
+                setError('Nenhum padrão encontrado. Comece a criar suas preferências!');
+                setPreferences({ is_active: true });
+            }
+            } else {
+            setError(err.message || 'Erro ao carregar preferências.');
+            }
+        } finally {
+            setLoading(false);
         }
-      } finally {
-        setLoading(false);
-      }
     };
     fetchPreferences();
   }, [userId, spotId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    // Quando o usuário digita, remove o erro daquele campo
+    if (validationErrors[name as keyof SpotPreferences]) {
+        setValidationErrors(prev => ({ ...prev, [name]: false }));
+    }
+    // ... (resto da função handleChange continua igual) ...
     const isCheckbox = type === 'checkbox';
     let inputValue: string | number | boolean;
-
     if (isCheckbox) {
         inputValue = (e.target as HTMLInputElement).checked;
     } else if (type === 'number' && value !== '') {
@@ -65,63 +71,90 @@ const SpotPreferencesPage: React.FC = () => {
     } else {
         inputValue = value;
     }
-
     setPreferences(prev => ({ ...prev, [name]: inputValue }));
     if (name !== 'is_active' && isUsingDefaults) setIsUsingDefaults(false);
   };
   
+  // ... (a função invalidateAndUpdateAffectedRecommendations continua igual) ...
   const invalidateAndUpdateAffectedRecommendations = async (currentSpotId: number) => {
-      if (!userId) return;
+    if (!userId) return;
+    const cachedDataStr = localStorage.getItem(THECHECK_CACHE_KEY);
+    if (!cachedDataStr) return;
+    const cache = JSON.parse(cachedDataStr);
+    const affectedPresets: Preset[] = cache.presets.filter((p: Preset) => p.spot_ids.includes(currentSpotId));
+    if (affectedPresets.length === 0) return;
+    affectedPresets.forEach(preset => {
+        if (cache.recommendations) {
+            delete cache.recommendations[preset.preset_id];
+        }
+    });
+    localStorage.setItem(THECHECK_CACHE_KEY, JSON.stringify(cache));
+    window.dispatchEvent(new Event('thecheck-cache-updated'));
+    for (const preset of affectedPresets) {
+        try {
+            const recommendations = await getRecommendations({
+                user_id: userId,
+                spot_ids: preset.spot_ids,
+                day_offset: weekdaysToDayOffset(preset.weekdays),
+                start_time: preset.start_time,
+                end_time: preset.end_time,
+            });
+            const currentCacheStr = localStorage.getItem(THECHECK_CACHE_KEY);
+            if(currentCacheStr) {
+                const currentCache = JSON.parse(currentCacheStr);
+                if (!currentCache.recommendations) currentCache.recommendations = {};
+                currentCache.recommendations[preset.preset_id] = recommendations;
+                localStorage.setItem(THECHECK_CACHE_KEY, JSON.stringify(currentCache));
+                window.dispatchEvent(new Event('thecheck-cache-updated'));
+            }
+        } catch (err) {
+            console.error(`Falha ao atualizar recomendação para o preset ${preset.preset_name}:`, err);
+        }
+    }
+  };
+  
+  // NOVA FUNÇÃO: para validar o formulário
+  const validateForm = (): boolean => {
+      const fieldsToValidate: (keyof SpotPreferences)[] = [
+          'min_wave_height', 'max_wave_height', 'ideal_wave_height',
+          'min_wave_period', 'max_wave_period', 'ideal_wave_period',
+          'min_swell_height', 'max_swell_height', 'ideal_swell_height',
+          'min_swell_period', 'max_swell_period', 'ideal_swell_period',
+          'min_sea_level', 'max_sea_level', 'ideal_sea_level',
+          'min_wind_speed', 'max_wind_speed', 'ideal_wind_speed',
+          'ideal_water_temperature', 'ideal_air_temperature'
+      ];
 
-      const cachedDataStr = localStorage.getItem(THECHECK_CACHE_KEY);
-      if (!cachedDataStr) return;
+      const newErrors: Partial<Record<keyof SpotPreferences, boolean>> = {};
+      let isValid = true;
 
-      const cache = JSON.parse(cachedDataStr);
-      const affectedPresets: Preset[] = cache.presets.filter((p: Preset) => p.spot_ids.includes(currentSpotId));
-
-      if (affectedPresets.length === 0) return;
-
-      affectedPresets.forEach(preset => {
-          if (cache.recommendations) {
-              delete cache.recommendations[preset.preset_id];
+      fieldsToValidate.forEach(field => {
+          // Verifica se o campo está vazio ou nulo
+          if (preferences[field] == null || preferences[field] === '') {
+              newErrors[field] = true;
+              isValid = false;
           }
       });
-      localStorage.setItem(THECHECK_CACHE_KEY, JSON.stringify(cache));
-      window.dispatchEvent(new Event('thecheck-cache-updated'));
 
-      for (const preset of affectedPresets) {
-          try {
-              const recommendations = await getRecommendations({
-                  user_id: userId,
-                  spot_ids: preset.spot_ids,
-                  day_offset: weekdaysToDayOffset(preset.weekdays),
-                  start_time: preset.start_time,
-                  end_time: preset.end_time,
-              });
-              
-              const currentCacheStr = localStorage.getItem(THECHECK_CACHE_KEY);
-              if(currentCacheStr) {
-                  const currentCache = JSON.parse(currentCacheStr);
-                  if (!currentCache.recommendations) currentCache.recommendations = {};
-                  currentCache.recommendations[preset.preset_id] = {
-                      timestamp: Date.now(),
-                      data: recommendations,
-                  };
-                  localStorage.setItem(THECHECK_CACHE_KEY, JSON.stringify(currentCache));
-                  window.dispatchEvent(new Event('thecheck-cache-updated'));
-              }
-          } catch (err) {
-              console.error(`Falha ao atualizar recomendação para o preset ${preset.preset_name}:`, err);
-          }
-      }
+      setValidationErrors(newErrors);
+      return isValid;
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId || !spotId) return;
 
+    // LÓGICA DE SUBMISSÃO ATUALIZADA
+    // 1. Valida o formulário ANTES de qualquer outra coisa
+    if (!validateForm()) {
+        setError("Por favor, preencha todos os campos obrigatórios.");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+    
     setIsSubmitting(true);
-    setError(null);
+    setError(null); // Limpa a mensagem de erro se a validação passou
     const numericSpotId = parseInt(spotId);
 
     try {
@@ -129,6 +162,7 @@ const SpotPreferencesPage: React.FC = () => {
         if (!currentIsActive && !isUsingDefaults) {
             await toggleSpotPreferenceActive(userId, numericSpotId, false);
         } else {
+            // ... (o resto da lógica de salvar os dados continua igual)
             const validKeys: (keyof SpotPreferences)[] = [
                 'min_wave_height', 'max_wave_height', 'ideal_wave_height',
                 'min_wave_period', 'max_wave_period', 'ideal_wave_period',
@@ -150,7 +184,6 @@ const SpotPreferencesPage: React.FC = () => {
         }
         
         await invalidateAndUpdateAffectedRecommendations(numericSpotId);
-
         navigate('/spots');
 
     } catch (err: any) {
@@ -159,12 +192,14 @@ const SpotPreferencesPage: React.FC = () => {
     }
   };
 
+  // ... (o JSX do `return` continua igual, mas agora passamos a prop `errors`)
+
   if (loading) return <div className="text-center p-10"><div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div></div>;
 
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold text-white mb-6">Suas Preferências para o Spot {spotId}</h1>
-      {error && <p className="text-red-400 bg-red-900/50 p-3 rounded mb-4">{error}</p>}
+      {error && <p className="text-red-400 bg-red-900/50 p-3 rounded mb-4 text-center">{error}</p>}
       {isUsingDefaults && (
         <div className="bg-blue-900/50 text-blue-200 p-3 rounded-md mb-4 text-center text-sm">
           Estamos mostrando preferências padrão do seu nível. Altere qualquer valor para criar personalizadas.
@@ -185,7 +220,8 @@ const SpotPreferencesPage: React.FC = () => {
         </div>
 
         <fieldset disabled={!preferences.is_active || isSubmitting} className="space-y-6 disabled:opacity-50 transition-opacity">
-            <PreferenceFormSections preferences={preferences} handleChange={handleChange} />
+            {/* PASSANDO A PROP `errors` PARA O COMPONENTE FILHO */}
+            <PreferenceFormSections preferences={preferences} handleChange={handleChange} errors={validationErrors} />
         </fieldset>
 
         <button
@@ -193,7 +229,7 @@ const SpotPreferencesPage: React.FC = () => {
           disabled={isSubmitting}
           className="w-full bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-600 transition-all disabled:bg-slate-600 disabled:cursor-wait"
         >
-          {isSubmitting ? 'Salvando! Isso pode demorar um pouco, estamos atualizando suas recomendações.' : 'Salvar Preferências'}
+          {isSubmitting ? 'Salvando...' : 'Salvar Preferências'}
         </button>
       </form>
     </div>

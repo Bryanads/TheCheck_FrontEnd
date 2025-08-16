@@ -24,15 +24,16 @@ const SpotsPage: React.FC = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        setLoading(true);
+        // A linha setLoading(true) foi removida para corrigir o loop.
         setError(null);
         try {
             const cachedDataStr = localStorage.getItem(THECHECK_CACHE_KEY);
             if (cachedDataStr) {
                 const cache = JSON.parse(cachedDataStr);
-                setSpots(cache.spots || []);
+                const spotsData = cache.spots || [];
+                setSpots(spotsData);
+
             } else {
-                // Se o cache não existir, redireciona para a página de carregamento para reconstruí-lo.
                 navigate('/loading');
             }
         } catch (err: any) {
