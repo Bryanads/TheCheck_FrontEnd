@@ -4,14 +4,13 @@ import { useOnboarding } from '../../context/OnboardingContext';
 import { SpotPreferences } from '../../types';
 import { OnboardingLayout } from '../../components/layout/OnboardingLayout';
 import { PreferenceFormSections } from '../../components/preferences/PreferenceFormFields';
-import { getLevelSpotPreferences } from '../../services/api'; // Importar a função da API
+import { getLevelSpotPreferences } from '../../services/api';
 
 const OnboardingSpotPreferencesPage: React.FC = () => {
   const { spotId } = useParams<{ spotId: string }>();
   const navigate = useNavigate();
   const { onboardingData, updateOnboardingData } = useOnboarding();
   
-  // Estados para controle de loading, erro e defaults
   const [preferences, setPreferences] = useState<Partial<SpotPreferences>>({ is_active: true });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +26,6 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Verifica se já existem preferências salvas no contexto para este spot
       const existingPrefs = onboardingData.spotPreferences[parseInt(spotId)];
       if (existingPrefs) {
           setPreferences(existingPrefs);
@@ -36,14 +34,36 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
           return;
       }
       
-      // Se não, busca as preferências padrão do nível
       try {
         const levelDefaults = await getLevelSpotPreferences(onboardingData.userId, parseInt(spotId));
-        setPreferences({ ...levelDefaults, is_active: true });
+        
+        // **A CORREÇÃO ESTÁ AQUI**
+        // Replicamos a lógica de limpeza do SpotPreferencesPage.tsx
+        // para garantir que o estado `preferences` contenha apenas chaves válidas.
+        const validKeys: (keyof SpotPreferences)[] = [
+            'min_wave_height', 'max_wave_height', 'ideal_wave_height', 'min_wave_period', 
+            'max_wave_period', 'ideal_wave_period', 'min_swell_height', 'max_swell_height', 
+            'ideal_swell_height', 'min_swell_period', 'max_swell_period', 'ideal_swell_period', 
+            'preferred_wave_direction', 'preferred_swell_direction', 'ideal_tide_type', 
+            'min_sea_level', 'max_sea_level', 'ideal_sea_level', 'min_wind_speed', 
+            'max_wind_speed', 'ideal_wind_speed', 'preferred_wind_direction', 
+            'ideal_water_temperature', 'ideal_air_temperature'
+        ];
+        
+        const cleanedDefaults = validKeys.reduce<Partial<SpotPreferences>>((acc, key) => {
+            if (levelDefaults[key] !== undefined) {
+                // Usamos 'as any' para contornar a checagem de tipo estrita aqui,
+                // pois sabemos que a chave existe em levelDefaults.
+                (acc as any)[key] = levelDefaults[key];
+            }
+            return acc;
+        }, {});
+
+        setPreferences({ ...cleanedDefaults, is_active: true });
         setIsUsingDefaults(true);
       } catch (err: any) {
         setError('Não foi possível carregar as preferências padrão. Você pode definir as suas manualmente.');
-        setPreferences({ is_active: true }); // Inicia com um objeto limpo
+        setPreferences({ is_active: true });
       } finally {
         setLoading(false);
       }
@@ -65,9 +85,7 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
     } else {
         inputValue = value;
     }
-
     setPreferences(prev => ({ ...prev, [name]: inputValue }));
-    // Se o usuário alterar qualquer campo, não estamos mais usando os padrões puros
     if (isUsingDefaults) setIsUsingDefaults(false);
   };
   
@@ -75,6 +93,7 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
     if (!spotId) return;
     const numericSpotId = parseInt(spotId);
     
+    // Agora o objeto `preferences` está limpo e esta desestruturação funciona sem erros.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user_preference_id, user_id, ...prefsToSave } = preferences;
 
