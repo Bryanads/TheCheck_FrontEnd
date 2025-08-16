@@ -95,7 +95,8 @@ const OnboardingPresetPage: React.FC = () => {
         });
 
         try {
-            const { token, userId } = await finalizeOnboarding(presetName, selectedSpotIds);
+            // A função finalizeOnboarding foi simplificada e não precisa mais de argumentos
+            const { token, userId } = await finalizeOnboarding();
             
             login(token, userId);
 

@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { User } from '../../types';
-import { OnboardingLayout } from '../../components/layout/OnboardingLayout'; // Importação
+import { OnboardingLayout } from '../../components/layout/OnboardingLayout';
 
 type OnboardingProfile = Pick<User, 'surf_level' | 'goofy_regular_stance' | 'preferred_wave_direction'>;
 
 const OnboardingProfilePage: React.FC = () => {
     const navigate = useNavigate();
-    const { updateOnboardingData } = useOnboarding();
+    const { createUserAndProfile } = useOnboarding();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     
     const [profile, setProfile] = useState<OnboardingProfile>({
         surf_level: 'intermediario',
@@ -24,10 +26,17 @@ const OnboardingProfilePage: React.FC = () => {
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        updateOnboardingData({ profile });
-        navigate('/onboarding/spots');
+        setLoading(true);
+        setError(null);
+        try {
+            await createUserAndProfile(profile);
+            navigate('/onboarding/spots');
+        } catch (err: any) {
+            setError(err.message || 'Falha ao criar perfil. Tente novamente.');
+            setLoading(false);
+        }
     };
 
     return (
@@ -55,9 +64,12 @@ const OnboardingProfilePage: React.FC = () => {
                         <option value="Both">Ambas</option>
                     </select>
                 </div>
+
+                {error && <p className="text-red-400 text-center">{error}</p>}
+
                 <div className="text-right">
-                    <button type="submit" className="bg-cyan-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-cyan-600 transition-all">
-                        Próximo
+                    <button type="submit" disabled={loading} className="bg-cyan-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-cyan-600 transition-all disabled:bg-slate-600 disabled:cursor-wait">
+                        {loading ? 'Criando Perfil...' : 'Próximo'}
                     </button>
                 </div>
             </form>
