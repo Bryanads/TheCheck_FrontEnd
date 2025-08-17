@@ -11,7 +11,7 @@ interface DaySummaryCardProps {
 const getRatingDetails = (score: number): { text: string; color: string } => {
     if (score > 90) return { text: 'Clássico', color: 'text-cyan-400' };
     if (score > 80) return { text: 'Muito Bom', color: 'text-green-400' };
-    if (score > 75) return { text: 'Bom', color: 'text-emerald-500' };
+    if (score > 70) return { text: 'Bom', color: 'text-emerald-500' };
     if (score > 40) return { text: 'Surfável', color: 'text-yellow-500' };
     if (score > 0) return { text: 'Ruim', color: 'text-orange-500' };
     return { text: 'Muito Ruim', color: 'text-red-500' };

@@ -58,8 +58,8 @@ const PresetForm: React.FC<{
     const { userId } = useAuth();
     const [name, setName] = useState(currentPreset?.preset_name || '');
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>(currentPreset?.spot_ids || []);
-    const [startTime, setStartTime] = useState(toLocalTime(currentPreset?.start_time || '06:00:00'));
-    const [endTime, setEndTime] = useState(toLocalTime(currentPreset?.end_time || '18:00:00'));
+    const [startTime, setStartTime] = useState(toLocalTime(currentPreset?.start_time || '08:00:00'));
+    const [endTime, setEndTime] = useState(toLocalTime(currentPreset?.end_time || '20:00:00'));
     const [weekdays, setWeekdays] = useState<number[]>(currentPreset?.weekdays || []);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -102,7 +102,6 @@ const PresetForm: React.FC<{
             <div className="bg-slate-800 rounded-xl p-8 w-full max-w-lg shadow-2xl">
                 <h3 className="text-2xl font-bold mb-4">{currentPreset?.preset_id ? 'Edit' : 'Create'} Preset</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Campos do formulário... */}
                     <input type="text" placeholder="Preset Name" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" required />
                     <div>
                         <label className="block text-slate-300 font-medium mb-2">Spots</label>
@@ -182,10 +181,9 @@ const PresetsPage: React.FC = () => {
             });
             updateCache(cache => {
                 if (!cache.recommendations) cache.recommendations = {};
-                cache.recommendations[preset.preset_id] = {
-                    timestamp: Date.now(),
-                    data: recommendations,
-                };
+                // ** A CORREÇÃO ESTÁ AQUI **
+                // Agora salva os dados da recomendação diretamente, sem o objeto aninhado.
+                cache.recommendations[preset.preset_id] = recommendations;
                 return cache;
             });
         } catch (error) {
@@ -262,26 +260,24 @@ const PresetsPage: React.FC = () => {
         try {
             const promises = [];
             
-            // CORREÇÃO: Enviar o objeto completo do preset ao atualizar
             if (oldDefault) {
                 const oldDefaultData = { ...oldDefault, is_default: false };
-                delete (oldDefaultData as Partial<Preset>).preset_id; // Boa prática remover o ID do corpo do PUT
+                delete (oldDefaultData as Partial<Preset>).preset_id;
                 promises.push(updatePreset(oldDefault.preset_id, oldDefaultData));
             }
 
             const newDefaultData = { ...newDefaultPreset, is_default: true };
-            delete (newDefaultData as Partial<Preset>).preset_id; // Boa prática remover o ID do corpo do PUT
+            delete (newDefaultData as Partial<Preset>).preset_id;
             promises.push(updatePreset(newDefaultPreset.preset_id, newDefaultData));
             
             await Promise.all(promises);
 
-            // Se a API confirmar, atualiza o cache permanentemente
             updateCache(cache => ({ ...cache, presets: optimisticPresets }));
 
         } catch (error) {
             console.error('Failed to update default preset', error);
             alert('Could not set the new default preset. Please try again.');
-            setPresets(originalPresets); // Reverte a UI em caso de erro na API
+            setPresets(originalPresets);
         } finally {
             setUpdatingPresetId(null);
         }
