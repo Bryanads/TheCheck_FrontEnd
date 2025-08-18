@@ -229,7 +229,7 @@ const SpotPreferencesPage: React.FC = () => {
           disabled={isSubmitting}
           className="w-full bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-600 transition-all disabled:bg-slate-600 disabled:cursor-wait"
         >
-          {isSubmitting ? 'Salvando...' : 'Salvar Preferências'}
+          {isSubmitting ? 'Salvando! Isso pode demorar um pouco, estamos atualizando suas recomendações!' : 'Salvar Preferências'}
         </button>
       </form>
     </div>
