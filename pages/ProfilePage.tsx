@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { updateUserProfile } from '../services/api';
 import { User } from '../types';
+import { LogoutIcon } from '../components/icons'; // Importando o ícone
 
 const ProfilePage: React.FC = () => {
-    const { user, userId, isLoading, updateUser } = useAuth();
+    const { user, userId, isLoading, updateUser, logout } = useAuth();
+    const navigate = useNavigate();
     const [formData, setFormData] = useState<Partial<User>>({});
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,6 +43,13 @@ const ProfilePage: React.FC = () => {
             setIsSubmitting(false);
         }
     };
+
+    // --- FUNÇÃO DE LOGOUT ---
+    const handleLogout = () => {
+        logout();
+        navigate('/'); // Redireciona para a página inicial após o logout
+    };
+
 
     if (isLoading || !user) {
         return (
@@ -95,6 +105,17 @@ const ProfilePage: React.FC = () => {
                     </div>
                      {message && <p className={`text-center mt-4 ${message.includes('Failed') ? 'text-red-400' : 'text-green-400'}`}>{message}</p>}
                 </form>
+            </div>
+
+            {/* --- BOTÃO DE LOGOUT ADICIONADO --- */}
+            <div className="mt-8 border-t border-slate-700 pt-8">
+                <button 
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center space-x-2 bg-red-600/20 text-red-400 font-bold py-3 px-6 rounded-lg hover:bg-red-600/30 hover:text-red-300 transition-all"
+                >
+                    <LogoutIcon />
+                    <span>Sair (Logout)</span>
+                </button>
             </div>
         </div>
     );

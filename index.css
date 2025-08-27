@@ -16,3 +16,10 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #64748b; /* slate-500 */
 }
+
+input[type="password"]::-ms-reveal,
+input[type="password"]::-webkit-password-reveal-button {
+    display: none;
+    -webkit-appearance: none;
+    appearance: none;
+}

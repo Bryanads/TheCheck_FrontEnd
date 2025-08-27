@@ -38,7 +38,6 @@ const WeekdaySelector: React.FC<{
 
 const OnboardingPresetPage: React.FC = () => {
     const navigate = useNavigate();
-    // A função updateOnboardingData não é mais necessária aqui
     const { onboardingData, finalizeOnboarding } = useOnboarding();
     const { login } = useAuth();
     const [spots, setSpots] = useState<Spot[]>([]);
@@ -72,15 +71,26 @@ const OnboardingPresetPage: React.FC = () => {
     };
     
     const handleFinalize = async () => {
+        setError(null);
+        if (!presetName.trim()) {
+            setError('Por favor, dê um nome ao seu preset.');
+            return;
+        }
         if (selectedSpotIds.length === 0) {
             setError('Por favor, selecione pelo menos um spot para o seu preset.');
             return;
         }
-        setLoading(true);
-        setError(null);
+        if (weekdays.length === 0) {
+            setError("Selecione pelo menos um dia da semana.");
+            return;
+        }
+        if (!startTime || !endTime) {
+            setError("Defina um horário de início e fim.");
+            return;
+        }
         
-        // **A CORREÇÃO ESTÁ AQUI**
-        // 1. Construímos o objeto de dados final diretamente.
+        setLoading(true);
+        
         const finalPresetData = {
             preset_name: presetName,
             spot_ids: selectedSpotIds,
@@ -90,7 +100,6 @@ const OnboardingPresetPage: React.FC = () => {
         };
 
         try {
-            // 2. Passamos o objeto de dados diretamente para a função de finalização.
             const { token, userId } = await finalizeOnboarding(finalPresetData);
             
             login(token, userId);

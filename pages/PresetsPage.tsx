@@ -6,7 +6,7 @@ import { Preset, Spot } from '../types';
 import { CogsIcon, PlusIcon, TrashIcon, EditIcon } from '../components/icons';
 import { toUTCTime, toLocalTime, weekdaysToDayOffset } from '../utils/utils';
 
-// --- COMPONENTES AUXILIARES E FORMULÁRIO (sem alterações) ---
+// --- COMPONENTES AUXILIARES E FORMULÁRIO ---
 const WeekdaySelector: React.FC<{
     selectedDays: number[];
     onToggle: (dayIndex: number) => void;
@@ -62,6 +62,7 @@ const PresetForm: React.FC<{
     const [endTime, setEndTime] = useState(toLocalTime(currentPreset?.end_time || '20:00:00'));
     const [weekdays, setWeekdays] = useState<number[]>(currentPreset?.weekdays || []);
     const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleWeekdayToggle = (dayIndex: number) => {
         setWeekdays(prev =>
@@ -71,7 +72,26 @@ const PresetForm: React.FC<{
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!userId || !name || selectedSpotIds.length === 0 || isSaving) return;
+        setError(null);
+
+        // --- VALIDAÇÃO ADICIONADA ---
+        if (!name.trim()) {
+            setError("O nome do preset não pode estar vazio.");
+            return;
+        }
+        if (selectedSpotIds.length === 0) {
+            setError("Selecione pelo menos um spot.");
+            return;
+        }
+        if (weekdays.length === 0) {
+            setError("Selecione pelo menos um dia da semana.");
+            return;
+        }
+        if (!startTime || !endTime) {
+            setError("Defina um horário de início e fim.");
+            return;
+        }
+        if (isSaving || !userId) return;
         
         setIsSaving(true);
         const data = {
@@ -88,6 +108,7 @@ const PresetForm: React.FC<{
             await onSave(data, currentPreset?.preset_id);
         } catch (error) {
             console.error('Failed to save preset from form', error);
+            setError("Falha ao salvar o preset. Tente novamente.");
         } finally {
             setIsSaving(false);
         }
@@ -100,7 +121,8 @@ const PresetForm: React.FC<{
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
             <div className="bg-slate-800 rounded-xl p-8 w-full max-w-lg shadow-2xl">
-                <h3 className="text-2xl font-bold mb-4">{currentPreset?.preset_id ? 'Edit' : 'Create'} Preset</h3>
+                <h3 className="text-2xl font-bold mb-4">{currentPreset?.preset_id ? 'Editar' : 'Criar'} Preset</h3>
+                {error && <p className="bg-red-500/20 text-red-300 p-3 rounded-lg mb-4 text-center">{error}</p>}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input type="text" placeholder="Preset Name" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" required />
                     <div>
@@ -115,17 +137,17 @@ const PresetForm: React.FC<{
                     </div>
                     <WeekdaySelector selectedDays={weekdays} onToggle={handleWeekdayToggle} />
                     <div>
-                        <label className="block text-slate-300 font-medium mb-2">Default Time Range (Local)</label>
+                        <label className="block text-slate-300 font-medium mb-2">Intervalo de tempo (Local)</label>
                         <div className="flex items-center space-x-4">
                             <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-                            <span className="text-slate-400">to</span>
+                            <span className="text-slate-400">até</span>
                              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                         </div>
                     </div>
                     <div className="flex justify-end space-x-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50" disabled={isSaving}>Cancel</button>
+                        <button type="button" onClick={onClose} className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50" disabled={isSaving}>Cancelar</button>
                         <button type="submit" className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-wait" disabled={isSaving}>
-                            {isSaving ? 'Saving...' : 'Save'}
+                            {isSaving ? 'Salvando...' : 'Salvar'}
                         </button>
                     </div>
                 </form>
@@ -181,8 +203,6 @@ const PresetsPage: React.FC = () => {
             });
             updateCache(cache => {
                 if (!cache.recommendations) cache.recommendations = {};
-                // ** A CORREÇÃO ESTÁ AQUI **
-                // Agora salva os dados da recomendação diretamente, sem o objeto aninhado.
                 cache.recommendations[preset.preset_id] = recommendations;
                 return cache;
             });
