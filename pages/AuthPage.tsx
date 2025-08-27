@@ -3,15 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { loginUser, registerUser } from '../services/api';
 import { useOnboarding } from '../context/OnboardingContext';
-
-// --- ÍCONES DE OLHO PARA VISUALIZAÇÃO DE SENHA ---
-const EyeIcon: React.FC<{className?: string}> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-);
-const EyeOffIcon: React.FC<{className?: string}> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 .95-3.112 3.54-5.61 6.88-6.542M9.75 9.75L4.125 4.125m5.625 5.625a3 3 0 11-4.242-4.242m4.242 4.242L14.25 14.25" /></svg>
-);
-
+import { EyeIcon, EyeOffIcon } from '../components/icons';
 
 const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -58,9 +50,24 @@ const AuthPage: React.FC = () => {
     } catch (err: any) {
         if (err.message) {
             if (err.message.includes('User not found') || err.message.includes('Invalid credentials')) {
-                setError(<>Email ou senha inválidos. Não tem uma conta? <button onClick={() => setIsLogin(false)} className="font-bold underline">Cadastre-se</button></>);
+                setError(
+                    <div>
+                        <span>Email ou senha inválidos.</span>
+                        <div>
+                            <span>Se ainda não tem uma conta: </span>
+                            <button onClick={() => { setIsLogin(false); setError(null); }} className="font-bold underline">Cadastre-se</button>
+                        </div>
+                    </div>
+                );
             } else if (err.message.includes('Email already registered')) {
-                setError(<>Este email já está cadastrado. <button onClick={() => setIsLogin(true)} className="font-bold underline">Faça login</button></>);
+                setError(
+                    <div>
+                        <span>Este email já está cadastrado.</span>
+                        <div>
+                            <button onClick={() => { setIsLogin(true); setError(null); }} className="font-bold underline">Faça login</button>
+                        </div>
+                    </div>
+                );
             } else {
                 setError(err.message);
             }
@@ -77,7 +84,7 @@ const AuthPage: React.FC = () => {
         <div className="max-w-md mx-auto mt-10 text-center">
             <div className="bg-slate-800 rounded-xl p-8">
                 <h2 className="text-2xl font-bold text-white mb-4">Você já está logado.</h2>
-                <button 
+                <button
                     onClick={() => {
                         logout();
                         navigate('/'); // Opcional: redirecionar para a home após o logout
@@ -96,21 +103,30 @@ const AuthPage: React.FC = () => {
       <div className="bg-slate-800 rounded-xl shadow-2xl shadow-cyan-500/10 p-8">
         <h2 className="text-3xl font-bold text-center text-white mb-2">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
         <p className="text-center text-slate-400 mb-6">{isLogin ? 'Log in to check the surf.' : 'Sign up to get personalized recommendations.'}</p>
-        
+
         {error && <div className="bg-red-500/20 text-red-300 p-3 rounded-lg mb-4 text-center">{error}</div>}
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
              <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" type="text" name="name" placeholder="Full Name" required />
           )}
           <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" type="email" name="email" placeholder="Email" required />
-          
+
           <div className="relative">
             <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 pr-10" type={showPassword ? "text" : "password"} name="password" placeholder="Password" required />
             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-white">
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
           </div>
+
+          {!isLogin && (
+            <div className="relative">
+                <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 pr-10" type={showPassword ? "text" : "password"} name="confirmPassword" placeholder="Confirm Password" required />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-white">
+                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+            </div>
+          )}
 
 
           <button type="submit" disabled={loading} className="w-full bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-600 transition-all shadow-md shadow-cyan-500/30 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center">
