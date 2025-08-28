@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
@@ -15,6 +15,15 @@ const AuthPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Efeito para manter o estado da verificação ao recarregar a página
+  useEffect(() => {
+    const verificationEmail = sessionStorage.getItem('emailForVerification');
+    if (verificationEmail) {
+      setEmailForVerification(verificationEmail);
+      setAwaitingVerification(true);
+    }
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,10 +51,14 @@ const AuthPage: React.FC = () => {
       if (error) throw error;
       
       if (data.user && data.user.identities && data.user.identities.length === 0) {
-        setError("Este e-mail já está em uso por outro método de login (ex: Google, etc).");
+        setError("Este e-mail já está em uso.");
       } else {
-        setEmailForVerification(email);
-        setAwaitingVerification(true);
+        // 1. Salva o e-mail no sessionStorage para que a página, ao recarregar,
+        //    saiba que precisa mostrar a tela de verificação.
+        sessionStorage.setItem('emailForVerification', email);
+        
+        // 2. Recarrega a página. O useEffect existente cuidará de mostrar a tela correta.
+        window.location.reload();
       }
 
     } catch (err: any) {
@@ -64,13 +77,15 @@ const AuthPage: React.FC = () => {
     const token = formData.get('token') as string;
     
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { error } = await supabase.auth.verifyOtp({
         email: emailForVerification,
         token: token,
         type: 'signup',
       });
       if (error) throw error;
-
+      
+      // Limpa o sessionStorage no sucesso
+      sessionStorage.removeItem('emailForVerification');
       navigate('/onboarding/profile');
 
     } catch (err: any) {
@@ -94,16 +109,12 @@ const AuthPage: React.FC = () => {
       if (error) throw error;
       navigate('/loading');
     } catch (err: any) {
-        // --- LÓGICA DE ERRO MELHORADA AQUI ---
         const errorMessage = err.error_description || err.message || '';
         
         if (errorMessage.includes('Invalid login credentials')) {
             setError('E-mail ou senha inválidos. Por favor, verifique seus dados.');
         } else if (errorMessage.includes('Email not confirmed')) {
             setError('Este e-mail ainda não foi verificado. Verifique sua caixa de entrada para encontrar o código de ativação.');
-            // Opcional: Aqui você poderia redirecionar para a tela de verificação
-            // setEmailForVerification(email);
-            // setAwaitingVerification(true);
         } else {
             setError('Ocorreu um erro ao tentar fazer login. Tente novamente mais tarde.');
         }
@@ -113,6 +124,13 @@ const AuthPage: React.FC = () => {
     }
   };
 
+  const handleGoBackFromVerification = () => {
+    // Limpa o sessionStorage ao voltar
+    sessionStorage.removeItem('emailForVerification');
+    setAwaitingVerification(false);
+  }
+
+  // --- RENDERIZAÇÃO DO FORMULÁRIO DE VERIFICAÇÃO ---
   if (awaitingVerification) {
     return (
       <div className="max-w-md mx-auto mt-10">
@@ -128,7 +146,7 @@ const AuthPage: React.FC = () => {
             <input
               className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-center text-2xl tracking-[1em]"
               type="text"
-              name="token"
+              name="token" // Nome simples para o campo
               maxLength={6}
               placeholder="------"
               required
@@ -137,7 +155,7 @@ const AuthPage: React.FC = () => {
               {loading ? 'Verificando...' : 'Verificar e Continuar'}
             </button>
           </form>
-          <button onClick={() => setAwaitingVerification(false)} className="mt-4 text-sm text-slate-400 hover:text-white">
+          <button onClick={handleGoBackFromVerification} className="mt-4 text-sm text-slate-400 hover:text-white">
             Voltar
           </button>
         </div>
@@ -145,6 +163,7 @@ const AuthPage: React.FC = () => {
     );
   }
   
+  // --- RENDERIZAÇÃO PRINCIPAL (LOGIN/CADASTRO) ---
   return (
     <div className="max-w-md mx-auto mt-10">
       <div className="bg-slate-800 rounded-xl shadow-2xl shadow-cyan-500/10 p-8">
