@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { getSpots } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext'; // <-- Importe o useAuth
 import { Spot } from '../../types';
 import { OnboardingLayout } from '../../components/layout/OnboardingLayout';
 import { toUTCTime, toLocalTime } from '../../utils/utils';
@@ -38,9 +38,8 @@ const WeekdaySelector: React.FC<{
 
 const OnboardingPresetPage: React.FC = () => {
     const navigate = useNavigate();
-    // A função updateOnboardingData não é mais necessária aqui
     const { onboardingData, finalizeOnboarding } = useOnboarding();
-    const { login } = useAuth();
+    const { userId } = useAuth(); // <-- Obtenha o userId do contexto de autenticação
     const [spots, setSpots] = useState<Spot[]>([]);
     
     const [presetName, setPresetName] = useState('Meu Primeiro Preset');
@@ -72,15 +71,32 @@ const OnboardingPresetPage: React.FC = () => {
     };
     
     const handleFinalize = async () => {
+        setError(null);
+        // --- VERIFICAÇÃO INICIAL ---
+        if (!userId) {
+            setError("Usuário não autenticado, não é possível finalizar.");
+            return;
+        }
+
+        if (!presetName.trim()) {
+            setError('Por favor, dê um nome ao seu preset.');
+            return;
+        }
         if (selectedSpotIds.length === 0) {
             setError('Por favor, selecione pelo menos um spot para o seu preset.');
             return;
         }
-        setLoading(true);
-        setError(null);
+        if (weekdays.length === 0) {
+            setError("Selecione pelo menos um dia da semana.");
+            return;
+        }
+        if (!startTime || !endTime) {
+            setError("Defina um horário de início e fim.");
+            return;
+        }
         
-        // **A CORREÇÃO ESTÁ AQUI**
-        // 1. Construímos o objeto de dados final diretamente.
+        setLoading(true);
+        
         const finalPresetData = {
             preset_name: presetName,
             spot_ids: selectedSpotIds,
@@ -90,14 +106,15 @@ const OnboardingPresetPage: React.FC = () => {
         };
 
         try {
-            // 2. Passamos o objeto de dados diretamente para a função de finalização.
-            const { token, userId } = await finalizeOnboarding(finalPresetData);
+            // --- CORREÇÃO AQUI: PASSE O userId PARA A FUNÇÃO ---
+            await finalizeOnboarding(finalPresetData, userId);
             
-            login(token, userId);
+            // O login não é mais necessário aqui, apenas o redirecionamento
             navigate('/loading');
 
         } catch (err: any) {
             setError(err.message || 'Ocorreu um erro ao finalizar o cadastro.');
+        } finally {
             setLoading(false);
         }
     };

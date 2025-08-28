@@ -1,9 +1,9 @@
 import { User } from '../types';
 // TESTANDO NOVA BRANCH !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-// const API_BASE_URL = 'http://192.168.15.17:5000'; // Em casa
-// const API_BASE_URL = 'http://10.155.75.252:5000'; // Telefone
-const API_BASE_URL = 'https://thecheck-api.onrender.com'; // Teste
+// const API_BASE_URL = 'http://192.168.15.4:5000'; // Em casa
+// const API_BASE_URL = 'http://172.31.96.1:5000'; // Telefone
+const API_BASE_URL = 'https://thecheck-api.onrender.com'; // Deploy
 
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {

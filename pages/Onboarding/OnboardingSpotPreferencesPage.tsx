@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
+import { useAuth } from '../../context/AuthContext'; // <-- PASSO 1: Importar o useAuth
 import { SpotPreferences } from '../../types';
 import { OnboardingLayout } from '../../components/layout/OnboardingLayout';
 import { PreferenceFormSections } from '../../components/preferences/PreferenceFormFields';
@@ -10,17 +11,26 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
   const { spotId } = useParams<{ spotId: string }>();
   const navigate = useNavigate();
   const { onboardingData, updateOnboardingData } = useOnboarding();
-  
+  const { userId, isAuthenticated } = useAuth(); // <-- PASSO 2: Obter userId e isAuthenticated do AuthContext
+
   const [preferences, setPreferences] = useState<Partial<SpotPreferences>>({ is_active: true });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUsingDefaults, setIsUsingDefaults] = useState(false);
-  // NOVO ESTADO: para guardar os erros de validação
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof SpotPreferences, boolean>>>({});
+
+  // Adiciona um guard para redirecionar se o usuário não estiver logado
+  useEffect(() => {
+    if (!isAuthenticated) {
+        navigate('/auth');
+    }
+  }, [isAuthenticated, navigate]);
+
 
   useEffect(() => {
     const fetchDefaultPreferences = async () => {
-      if (!spotId || !onboardingData.userId) {
+      // --- PASSO 3: Usar o userId do useAuth ---
+      if (!spotId || !userId) {
           setLoading(false);
           return;
       };
@@ -37,7 +47,8 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
       }
       
       try {
-        const levelDefaults = await getLevelSpotPreferences(onboardingData.userId, parseInt(spotId));
+        // --- PASSO 4: Passar o userId correto para a API ---
+        const levelDefaults = await getLevelSpotPreferences(userId, parseInt(spotId));
         
         const validKeys: (keyof SpotPreferences)[] = [
             'min_wave_height', 'max_wave_height', 'ideal_wave_height', 'min_wave_period', 
@@ -66,8 +77,11 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
       }
     };
 
-    fetchDefaultPreferences();
-  }, [spotId, onboardingData.userId, onboardingData.spotPreferences]);
+    // Garante que a busca só ocorra se o userId estiver disponível
+    if (userId) {
+        fetchDefaultPreferences();
+    }
+  }, [spotId, userId, onboardingData.spotPreferences]);
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -125,9 +139,10 @@ const OnboardingSpotPreferencesPage: React.FC = () => {
         return;
     }
 
-    setError(null); // Limpa o erro se a validação passar
+    setError(null);
     const numericSpotId = parseInt(spotId);
     
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user_preference_id, user_id, ...prefsToSave } = preferences;
 
     updateOnboardingData({

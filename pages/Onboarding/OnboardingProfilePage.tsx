@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOnboarding } from '../../context/OnboardingContext';
+import { useAuth } from '../../context/AuthContext'; // <-- Importar useAuth
+import { updateUserProfile } from '../../services/api'; // <-- Importar a função da API
 import { User } from '../../types';
 import { OnboardingLayout } from '../../components/layout/OnboardingLayout';
 
+// Mantemos o tipo, pois ele representa os dados do formulário
 type OnboardingProfile = Pick<User, 'surf_level' | 'goofy_regular_stance' | 'preferred_wave_direction'>;
 
 const OnboardingProfilePage: React.FC = () => {
     const navigate = useNavigate();
-    const { createUserAndProfile } = useOnboarding();
+    const { userId } = useAuth(); // <-- Obter o ID do usuário logado
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
@@ -28,13 +30,22 @@ const OnboardingProfilePage: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!userId) { // <-- Verificação de segurança
+            setError('Você precisa estar logado para continuar.');
+            return;
+        }
+
         setLoading(true);
         setError(null);
+
         try {
-            await createUserAndProfile(profile);
+            // --- CHAMADA DIRETA PARA A API DE ATUALIZAÇÃO ---
+            await updateUserProfile(userId, profile);
             navigate('/onboarding/spots');
         } catch (err: any) {
-            setError(err.message || 'Falha ao criar perfil. Tente novamente.');
+            setError(err.message || 'Falha ao salvar o perfil. Tente novamente.');
+        } finally {
             setLoading(false);
         }
     };
@@ -69,7 +80,7 @@ const OnboardingProfilePage: React.FC = () => {
 
                 <div className="text-right">
                     <button type="submit" disabled={loading} className="bg-cyan-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-cyan-600 transition-all disabled:bg-slate-600 disabled:cursor-wait">
-                        {loading ? 'Criando Perfil...' : 'Próximo'}
+                        {loading ? 'Salvando Perfil...' : 'Próximo'}
                     </button>
                 </div>
             </form>
