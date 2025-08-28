@@ -58,7 +58,7 @@ export const weekdaysToDayOffset = (weekdays: number[]): number[] => {
     if (!weekdays || weekdays.length === 0) return [0]; // Padrão para hoje se nenhum dia for selecionado
 
     const today = new Date();
-    const currentDay = today.getDay(); // 0 para Domingo, 1 para Segunda, etc.
+    const currentDay = today.getUTCDay();
     const offsets: number[] = [];
 
     for (let i = 0; i < 7; i++) { // Verifica os próximos 7 dias

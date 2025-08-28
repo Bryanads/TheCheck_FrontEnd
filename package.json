@@ -4,14 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "predev": "powershell.exe -ExecutionPolicy Bypass -Command \"\\$wsl_ip = (wsl -e hostname -I).Trim(); netsh interface portproxy delete v4tov4 listenport=5000; netsh interface portproxy add v4tov4 listenport=5000 connectport=5000 connectaddress=\\$wsl_ip; netsh interface portproxy delete v4tov4 listenport=5173; netsh interface portproxy add v4tov4 listenport=5173 connectport=5173 connectaddress=\\$wsl_ip; echo ('WSL Port Forwarding Rules Updated for IP: ' + \\$wsl_ip)\"",
-  "dev": "concurrently \"npm:dev:frontend\"",
-  "dev:frontend": "vite --host",
-  "dev:backend": "cd ../TheCheck && . .venv/bin/activate && python app.py",
-  "build": "vite build",
-  "preview": "vite preview"
-},
+    "predev": "powershell.exe -ExecutionPolicy Bypass -Command \"\\$wsl_ip = (wsl -e hostname -I).Trim(); netsh interface portproxy delete v4tov4 listenport=5000; netsh interface portproxy add v4tov4 listenport=5000 connectport=5000 connectaddress=\\$wsl_ip; netsh interface portproxy delete v4tov4 listenport=5173; netsh interface portproxy add v4tov4 listenport=5173 connectport=5173 connectaddress=\\$wsl_ip; echo ('WSL Port Forwarding Rules Updated for IP: ' + \\$wsl_ip)\"",
+    "dev": "concurrently \"npm:dev:frontend\"",
+    "dev:frontend": "vite --host",
+    "dev:backend": "cd ../TheCheck && . .venv/bin/activate && python app.py",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
+    "@supabase/supabase-js": "^2.56.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3",

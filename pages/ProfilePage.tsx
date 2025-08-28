@@ -1,28 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { updateUserProfile } from '../services/api';
+import { updateUserProfile, getUserProfile } from '../services/api'; // <-- IMPORTAR getUserProfile
 import { User } from '../types';
-import { LogoutIcon } from '../components/icons'; // Importando o ícone
+import { LogoutIcon } from '../components/icons';
 
 const ProfilePage: React.FC = () => {
-    const { user, userId, isLoading, updateUser, logout } = useAuth();
+    // O 'user' do useAuth ainda é útil para o e-mail e para saber se está logado
+    const { user, userId, logout } = useAuth();
     const navigate = useNavigate();
+    
     const [formData, setFormData] = useState<Partial<User>>({});
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true); // Estado de carregamento da página
+
+    // --- NOVA LÓGICA PARA BUSCAR O PERFIL COMPLETO ---
+    const fetchProfileData = useCallback(async () => {
+        if (!userId) return;
+
+        setIsLoading(true);
+        try {
+            const profileData = await getUserProfile(userId);
+            setFormData({
+                name: profileData.name,
+                surf_level: profileData.surf_level,
+                goofy_regular_stance: profileData.goofy_regular_stance || 'Regular', 
+                preferred_wave_direction: profileData.preferred_wave_direction || 'Both', 
+                bio: profileData.bio,
+            });
+        } catch (error) {
+            console.error("Failed to fetch profile data:", error);
+            setMessage('Failed to load profile data.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [userId]);
 
     useEffect(() => {
-        if (user) {
-            setFormData({
-                name: user.name,
-                surf_level: user.surf_level,
-                goofy_regular_stance: user.goofy_regular_stance || 'Regular', 
-                preferred_wave_direction: user.preferred_wave_direction || 'Both', 
-                bio: user.bio,
-            });
-        }
-    }, [user]);
+        fetchProfileData();
+    }, [fetchProfileData]);
     
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -33,8 +50,9 @@ const ProfilePage: React.FC = () => {
         if (!userId) return;
         setIsSubmitting(true);
         try {
-            const response = await updateUserProfile(userId, formData);
-            updateUser(response.user);
+            await updateUserProfile(userId, formData);
+            // Após a atualização, podemos re-buscar os dados para garantir consistência
+            await fetchProfileData(); 
             setMessage('Profile updated successfully!');
             setTimeout(() => setMessage(''), 3000);
         } catch (error) {
@@ -44,14 +62,12 @@ const ProfilePage: React.FC = () => {
         }
     };
 
-    // --- FUNÇÃO DE LOGOUT ---
     const handleLogout = () => {
         logout();
-        navigate('/'); // Redireciona para a página inicial após o logout
+        navigate('/');
     };
 
-
-    if (isLoading || !user) {
+    if (isLoading) {
         return (
             <div className="flex justify-center items-center py-20">
                 <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
@@ -70,28 +86,29 @@ const ProfilePage: React.FC = () => {
                     </div>
                      <div>
                         <label htmlFor="email" className="block text-sm font-medium text-slate-300">Email</label>
-                        <input type="email" name="email" id="email" value={user.email} disabled className="mt-1 w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-400 cursor-not-allowed" />
+                        {/* O e-mail é imutável e vem do 'user' do Supabase */}
+                        <input type="email" name="email" id="email" value={user?.email || ''} disabled className="mt-1 w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-400 cursor-not-allowed" />
                     </div>
                     <div>
                         <label htmlFor="surf_level" className="block text-sm font-medium text-slate-300">Surf Level</label>
                         <select name="surf_level" id="surf_level" value={formData.surf_level || ''} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                            <option>maroleiro</option>
-                            <option>intermediario</option>
+                            <option value="maroleiro">Maroleiro</option>
+                            <option value="intermediario">Intermediário</option>
                         </select>
                     </div>
                      <div>
                         <label htmlFor="goofy_regular_stance" className="block text-sm font-medium text-slate-300">Stance</label>
                         <select name="goofy_regular_stance" id="goofy_regular_stance" value={formData.goofy_regular_stance || ''} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                            <option>Regular</option>
-                            <option>Goofy</option>
+                            <option value="Regular">Regular</option>
+                            <option value="Goofy">Goofy</option>
                         </select>
                     </div>
                     <div>
                         <label htmlFor="preferred_wave_direction" className="block text-sm font-medium text-slate-300">Preferred Wave Direction</label>
                         <select name="preferred_wave_direction" id="preferred_wave_direction" value={formData.preferred_wave_direction || ''} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                            <option>Left</option>
-                            <option>Right</option>
-                            <option>Both</option>
+                            <option value="Left">Esquerda</option>
+                            <option value="Right">Direita</option>
+                            <option value="Both">Ambas</option>
                         </select>
                     </div>
                     <div>
@@ -107,7 +124,6 @@ const ProfilePage: React.FC = () => {
                 </form>
             </div>
 
-            {/* --- BOTÃO DE LOGOUT ADICIONADO --- */}
             <div className="mt-8 border-t border-slate-700 pt-8">
                 <button 
                     onClick={handleLogout}

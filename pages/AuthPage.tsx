@@ -1,103 +1,150 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { loginUser, registerUser } from '../services/api';
-import { useOnboarding } from '../context/OnboardingContext';
+import { supabase } from '../supabaseClient';
 import { EyeIcon, EyeOffIcon } from '../components/icons';
 
 const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const navigate = useNavigate();
-  const { login, isAuthenticated, logout } = useAuth();
-  const { updateOnboardingData } = useOnboarding();
-  const [error, setError] = useState<React.ReactNode>(null);
+  const { isAuthenticated, logout } = useAuth();
+  
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
+  const [emailForVerification, setEmailForVerification] = useState('');
+
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
 
-    if (!isLogin) {
-      if (data.password !== data.confirmPassword) {
-        setError('As senhas não coincidem.');
-        setLoading(false);
-        return;
-      }
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const name = formData.get('name') as string;
+
+    if (password !== formData.get('confirmPassword')) {
+      setError('As senhas não coincidem.');
+      setLoading(false);
+      return;
     }
 
     try {
-      if (isLogin) {
-        const res = await loginUser({ email: data.email, password: data.password });
-        localStorage.removeItem('thecheck_cache');
-        sessionStorage.clear();
-        login(res.token, res.user_id);
-        navigate('/loading');
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
+      });
+
+      if (error) throw error;
+      
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setError("Este e-mail já está em uso por outro método de login (ex: Google, etc).");
       } else {
-        await registerUser({ name: data.name, email: data.email, password: data.password });
-        updateOnboardingData({
-          credentials: {
-            name: data.name as string,
-            email: data.email as string,
-            password: data.password as string,
-          },
-        });
-        navigate('/onboarding/profile');
+        setEmailForVerification(email);
+        setAwaitingVerification(true);
       }
+
     } catch (err: any) {
-        if (err.message) {
-            if (err.message.includes('User not found') || err.message.includes('Invalid credentials')) {
-                setError(
-                    <div>
-                        <span>Email ou senha inválidos.</span>
-                        <div>
-                            <span>Se ainda não tem uma conta: </span>
-                            <button onClick={() => { setIsLogin(false); setError(null); }} className="font-bold underline">Cadastre-se</button>
-                        </div>
-                    </div>
-                );
-            } else if (err.message.includes('Email already registered')) {
-                setError(
-                    <div>
-                        <span>Este email já está cadastrado.</span>
-                        <div>
-                            <button onClick={() => { setIsLogin(true); setError(null); }} className="font-bold underline">Faça login</button>
-                        </div>
-                    </div>
-                );
-            } else {
-                setError(err.message);
-            }
-        } else {
-            setError('Ocorreu um erro desconhecido.');
-        }
+      setError(err.error_description || err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  if (isAuthenticated) {
+  const handleVerificationSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const token = formData.get('token') as string;
+    
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: emailForVerification,
+        token: token,
+        type: 'signup',
+      });
+      if (error) throw error;
+
+      navigate('/onboarding/profile');
+
+    } catch (err: any) {
+      setError(err.error_description || err.message || "Código inválido ou expirado.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      navigate('/loading');
+    } catch (err: any) {
+        // --- LÓGICA DE ERRO MELHORADA AQUI ---
+        const errorMessage = err.error_description || err.message || '';
+        
+        if (errorMessage.includes('Invalid login credentials')) {
+            setError('E-mail ou senha inválidos. Por favor, verifique seus dados.');
+        } else if (errorMessage.includes('Email not confirmed')) {
+            setError('Este e-mail ainda não foi verificado. Verifique sua caixa de entrada para encontrar o código de ativação.');
+            // Opcional: Aqui você poderia redirecionar para a tela de verificação
+            // setEmailForVerification(email);
+            // setAwaitingVerification(true);
+        } else {
+            setError('Ocorreu um erro ao tentar fazer login. Tente novamente mais tarde.');
+        }
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (awaitingVerification) {
     return (
-        <div className="max-w-md mx-auto mt-10 text-center">
-            <div className="bg-slate-800 rounded-xl p-8">
-                <h2 className="text-2xl font-bold text-white mb-4">Você já está logado.</h2>
-                <button
-                    onClick={() => {
-                        logout();
-                        navigate('/'); // Opcional: redirecionar para a home após o logout
-                    }}
-                    className="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition-all"
-                >
-                    Sair (Logout)
-                </button>
-            </div>
+      <div className="max-w-md mx-auto mt-10">
+        <div className="bg-slate-800 rounded-xl p-8">
+          <h2 className="text-2xl font-bold text-center text-white mb-2">Verifique seu E-mail</h2>
+          <p className="text-center text-slate-400 mb-6">
+            Enviamos um código de 6 dígitos para <strong>{emailForVerification}</strong>.
+          </p>
+
+          {error && <div className="bg-red-500/20 text-red-300 p-3 rounded-lg mb-4 text-center">{error}</div>}
+          
+          <form onSubmit={handleVerificationSubmit}>
+            <input
+              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white text-center text-2xl tracking-[1em]"
+              type="text"
+              name="token"
+              maxLength={6}
+              placeholder="------"
+              required
+            />
+            <button type="submit" disabled={loading} className="mt-6 w-full bg-cyan-500 text-white font-bold py-3 rounded-lg hover:bg-cyan-600 disabled:bg-slate-600">
+              {loading ? 'Verificando...' : 'Verificar e Continuar'}
+            </button>
+          </form>
+          <button onClick={() => setAwaitingVerification(false)} className="mt-4 text-sm text-slate-400 hover:text-white">
+            Voltar
+          </button>
         </div>
+      </div>
     );
   }
-
+  
   return (
     <div className="max-w-md mx-auto mt-10">
       <div className="bg-slate-800 rounded-xl shadow-2xl shadow-cyan-500/10 p-8">
@@ -105,15 +152,15 @@ const AuthPage: React.FC = () => {
         <p className="text-center text-slate-400 mb-6">{isLogin ? 'Log in to check the surf.' : 'Sign up to get personalized recommendations.'}</p>
 
         {error && <div className="bg-red-500/20 text-red-300 p-3 rounded-lg mb-4 text-center">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+        
+        <form onSubmit={isLogin ? handleLogin : handleSignUp} className="space-y-6">
           {!isLogin && (
-             <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" type="text" name="name" placeholder="Full Name" required />
+             <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg" type="text" name="name" placeholder="Full Name" required />
           )}
-          <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" type="email" name="email" placeholder="Email" required />
+          <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg" type="email" name="email" placeholder="Email" required />
 
           <div className="relative">
-            <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 pr-10" type={showPassword ? "text" : "password"} name="password" placeholder="Password" required />
+            <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg pr-10" type={showPassword ? "text" : "password"} name="password" placeholder="Password" required />
             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-white">
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
@@ -121,24 +168,28 @@ const AuthPage: React.FC = () => {
 
           {!isLogin && (
             <div className="relative">
-                <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 pr-10" type={showPassword ? "text" : "password"} name="confirmPassword" placeholder="Confirm Password" required />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-white">
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
+              <input className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg pr-10" type={showPassword ? "text" : "password"} name="confirmPassword" placeholder="Confirm Password" required />
             </div>
           )}
-
-
-          <button type="submit" disabled={loading} className="w-full bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-600 transition-all shadow-md shadow-cyan-500/30 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center">
+          
+          <button type="submit" disabled={loading} className="w-full bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-600 disabled:bg-slate-600 flex items-center justify-center">
              {loading && <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>}
              {isLogin ? 'Log In' : 'Sign Up'}
           </button>
         </form>
 
+        <div className="text-center text-sm mt-4">
+            {isLogin && (
+                 <Link to="/forgot-password" className="font-medium text-cyan-400 hover:underline">
+                    Esqueceu sua senha?
+                </Link>
+            )}
+        </div>
+
         <p className="text-center text-slate-400 mt-6">
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
+          {isLogin ? "Não tem uma conta? " : "Já tem uma conta? "}
           <button onClick={() => { setIsLogin(!isLogin); setError(null); }} className="font-medium text-cyan-400 hover:underline">
-            {isLogin ? 'Sign Up' : 'Log In'}
+            {isLogin ? 'Cadastre-se' : 'Faça Login'}
           </button>
         </p>
       </div>

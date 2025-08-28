@@ -14,7 +14,10 @@ import OnboardingProfilePage from './pages/Onboarding/OnboardingProfilePage';
 import OnboardingSpotsPage from './pages/Onboarding/OnboardingSpotsPage';
 import OnboardingSpotPreferencesPage from './pages/Onboarding/OnboardingSpotPreferencesPage';
 import OnboardingPresetPage from './pages/Onboarding/OnboardingPresetPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import UpdatePasswordPage from './pages/UpdatePasswordPage';
 import { Header } from './components/layout/Header';
+
 
 const App: React.FC = () => {
   const { isLoading } = useAuth();
@@ -46,6 +49,10 @@ const App: React.FC = () => {
                 <Route path="/spots/:spotId/preferences" element={<SpotPreferencesPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/presets" element={<PresetsPage />} />
+
+
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/update-password" element={<UpdatePasswordPage />} />
                 
                 {/* Onboarding Routes */}
                 <Route path="/onboarding/profile" element={<OnboardingProfilePage />} />
