@@ -20,8 +20,8 @@ const getRatingDetails = (score: number): { text: string; color: string } => {
 export const DaySummaryCard: React.FC<DaySummaryCardProps> = ({ dayRec, onExpand, isExpanded }) => {
     const calculateAverageScore = () => {
         if (dayRec.recommendations.length === 0) return 0;
-        const totalScore = dayRec.recommendations.reduce((acc, rec) => acc + rec.suitability_score, 0);
-        return totalScore / dayRec.recommendations.length;
+        const scores = dayRec.recommendations.map(rec => rec.suitability_score);
+        return Math.max(...scores);
     };
     
     const getSurfableHours = () => {
