@@ -1,6 +1,6 @@
 import React from 'react';
 import { AuthProvider } from './context/AuthContext';
-import RootNavigator from './navigation/RootNavigator'; // Criaremos este arquivo a seguir
+import RootNavigator from './navigation/RootNavigator';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Cria uma instância do cliente do TanStack Query

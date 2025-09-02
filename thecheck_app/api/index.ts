@@ -1,7 +1,8 @@
 import { supabase } from './supabaseClient';
-import { Profile } from '../types'; // Assumindo que você terá um arquivo de tipos
+import { Profile } from '../types';
+import { Recommendation, RecommendationRequest } from '../types';
 
-const API_BASE_URL = 'http://127.0.0.1:8000'; // URL da sua API local
+const API_BASE_URL = 'http://172.31.108.128:8000'; // URL da sua API local
 
 // Função auxiliar para fazer as chamadas à API
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -36,4 +37,11 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 // Endpoint para buscar o perfil do usuário
 export const getUserProfile = () => {
     return apiFetch<Profile>('/profile');
+};
+
+export const getRecommendations = (request: RecommendationRequest) => {
+    return apiFetch<Recommendation[]>('/recommendations', { 
+        method: 'POST', 
+        body: JSON.stringify(request) 
+    });
 };
