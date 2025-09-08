@@ -7,6 +7,8 @@ import { ProfileUpdate, PresetCreate, PresetUpdate, PreferenceUpdate, Recommenda
 export const useProfile = () => useQuery({
   queryKey: ['profile'],
   queryFn: api.getProfile,
+  retry: 2,
+  staleTime: 5 * 60 * 1000, // 5 minutos
 });
 
 export const useUpdateProfile = () => {
@@ -24,12 +26,17 @@ export const useSpots = () => useQuery({
   queryKey: ['spots'],
   queryFn: api.getAllSpots,
   staleTime: 60 * 60 * 1000, // Cache spots for 1 hour
+  retry: 2,
 });
+
+// Função auxiliar para buscar spots (usado em alguns lugares como LoadingPage)
+export const getSpots = api.getAllSpots;
 
 // ===== PRESETS HOOKS =====
 export const usePresets = () => useQuery({
   queryKey: ['presets'],
   queryFn: api.getPresets,
+  retry: 2,
 });
 
 export const useCreatePreset = () => {
@@ -43,14 +50,14 @@ export const useCreatePreset = () => {
 };
 
 export const useUpdatePreset = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ presetId, updates }: { presetId: number; updates: PresetUpdate }) =>
-            api.updatePreset(presetId, updates),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['presets'] });
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ presetId, updates }: { presetId: number; updates: PresetUpdate }) =>
+      api.updatePreset(presetId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['presets'] });
+    },
+  });
 };
 
 export const useDeletePreset = () => {
@@ -65,27 +72,86 @@ export const useDeletePreset = () => {
 
 // ===== PREFERENCES HOOKS =====
 export const useSpotPreferences = (spotId: number) => useQuery({
-    queryKey: ['preferences', spotId],
-    queryFn: () => api.getSpotPreferences(spotId),
-    enabled: !!spotId, // Only run if spotId is valid
+  queryKey: ['preferences', spotId],
+  queryFn: () => api.getSpotPreferences(spotId),
+  enabled: !!spotId && spotId > 0, // Só executa se spotId for válido
+  retry: 2,
 });
 
 export const useUpdateSpotPreferences = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ spotId, updates }: { spotId: number; updates: PreferenceUpdate }) =>
-            api.updateSpotPreferences(spotId, updates),
-        onSuccess: (_, { spotId }) => {
-            queryClient.invalidateQueries({ queryKey: ['preferences', spotId] });
-            queryClient.invalidateQueries({ queryKey: ['recommendations'] }); // Invalidate recommendations as well
-        },
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spotId, updates }: { spotId: number; updates: PreferenceUpdate }) =>
+      api.updateSpotPreferences(spotId, updates),
+    onSuccess: (_, { spotId }) => {
+      queryClient.invalidateQueries({ queryKey: ['preferences', spotId] });
+      queryClient.invalidateQueries({ queryKey: ['recommendations'] }); // Invalidate recommendations as well
+    },
+  });
 };
 
-
-// ===== RECOMMENDATIONS HOOKS (Mutation for on-demand fetching) =====
+// ===== RECOMMENDATIONS HOOKS =====
 export const useGetRecommendations = () => {
-    return useMutation({
-        mutationFn: (request: RecommendationRequest) => api.getRecommendations(request),
-    });
+  return useMutation({
+    mutationKey: ['get-recommendations'], // Adiciona mutationKey para aparecer no DevTools
+    mutationFn: async (request: RecommendationRequest) => {
+      console.log('🔥 useGetRecommendations - Starting request:', request);
+      
+      try {
+        const result = await api.getRecommendations(request);
+        console.log('✅ useGetRecommendations - Success:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ useGetRecommendations - Error:', error);
+        throw error;
+      }
+    },
+    retry: 1,
+    onMutate: (variables) => {
+      console.log('⏳ useGetRecommendations - onMutate:', variables);
+    },
+    onSuccess: (data, variables) => {
+      console.log('🎉 useGetRecommendations - onSuccess:', { data: data?.length, variables });
+    },
+    onError: (error, variables) => {
+      console.error('💥 useGetRecommendations - onError:', { error, variables });
+    },
+    onSettled: (data, error, variables) => {
+      console.log('🏁 useGetRecommendations - onSettled:', { 
+        hasData: !!data, 
+        hasError: !!error, 
+        variables 
+      });
+    }
+  });
 };
+
+// ===== ALTERNATIVE: Query-based recommendations (caso queira testar) =====
+export const useRecommendationsQuery = (request: RecommendationRequest | null) => {
+  return useQuery({
+    queryKey: ['recommendations', request],
+    queryFn: () => {
+      if (!request) throw new Error('No request provided');
+      console.log('🔥 useRecommendationsQuery - Starting:', request);
+      return api.getRecommendations(request);
+    },
+    enabled: !!request,
+    retry: 1,
+    staleTime: 2 * 60 * 1000, // 2 minutos
+  });
+};
+
+// ===== FORECASTS HOOKS (caso você precise no futuro) =====
+export const useSpotForecast = (spotId: number) => useQuery({
+  queryKey: ['forecast', spotId],
+  queryFn: () => api.getSpotForecast(spotId),
+  enabled: !!spotId && spotId > 0,
+  retry: 2,
+  staleTime: 10 * 60 * 1000, // 10 minutos - forecasts mudam com menos frequência
+});
+
+// ===== UTILITY FUNCTIONS (re-exports das funções da API para compatibilidade) =====
+export const getPresets = api.getPresets;
+export const getRecommendations = api.getRecommendations;
+export const createPreset = api.createPreset;
+export const updateSpotPreferences = api.updateSpotPreferences;

@@ -1,4 +1,3 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-56043ed899e9911f49213e6ecb22787e09848d37/services/api.ts
 import { supabase } from '../supabaseClient';
 import {
     Profile, ProfileUpdate, Spot, Preset, PresetCreate, PresetUpdate,
@@ -22,8 +21,15 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
         const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
-            throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
+            const errorData = await response.json().catch(() => ({ 
+                message: 'An unknown error occurred',
+                status: response.status 
+            }));
+            
+            // Adiciona o status do erro para melhor handling
+            const error = new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
+            (error as any).status = response.status;
+            throw error;
         }
 
         if (response.status === 204) {
@@ -39,24 +45,33 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
 // ===== PROFILE API =====
 export const getProfile = (): Promise<Profile> => apiFetch('/profile');
-export const updateProfile = (updates: ProfileUpdate): Promise<Profile> => apiFetch('/profile', { method: 'PUT', body: JSON.stringify(updates) });
+export const updateProfile = (updates: ProfileUpdate): Promise<Profile> => 
+    apiFetch('/profile', { method: 'PUT', body: JSON.stringify(updates) });
 
 // ===== SPOTS API =====
 export const getAllSpots = (): Promise<Spot[]> => apiFetch('/spots');
 export const getSpotById = (spotId: number): Promise<Spot> => apiFetch(`/spots/${spotId}`);
 
 // ===== PRESETS API =====
+// CORREÇÃO: Remove o parâmetro userId se a API não precisa dele na URL
 export const getPresets = (): Promise<Preset[]> => apiFetch('/presets');
-export const createPreset = (preset: PresetCreate): Promise<Preset> => apiFetch('/presets', { method: 'POST', body: JSON.stringify(preset) });
-export const updatePreset = (presetId: number, updates: PresetUpdate): Promise<Preset> => apiFetch(`/presets/${presetId}`, { method: 'PUT', body: JSON.stringify(updates) });
-export const deletePreset = (presetId: number): Promise<void> => apiFetch(`/presets/${presetId}`, { method: 'DELETE' });
+export const createPreset = (preset: PresetCreate): Promise<Preset> => 
+    apiFetch('/presets', { method: 'POST', body: JSON.stringify(preset) });
+export const updatePreset = (presetId: number, updates: PresetUpdate): Promise<Preset> => 
+    apiFetch(`/presets/${presetId}`, { method: 'PUT', body: JSON.stringify(updates) });
+export const deletePreset = (presetId: number): Promise<void> => 
+    apiFetch(`/presets/${presetId}`, { method: 'DELETE' });
 
 // ===== PREFERENCES API =====
-export const getSpotPreferences = (spotId: number): Promise<Preference> => apiFetch(`/preferences/spot/${spotId}`);
-export const updateSpotPreferences = (spotId: number, updates: PreferenceUpdate): Promise<Preference> => apiFetch(`/preferences/spot/${spotId}`, { method: 'PUT', body: JSON.stringify(updates) });
+export const getSpotPreferences = (spotId: number): Promise<Preference> => 
+    apiFetch(`/preferences/spot/${spotId}`);
+export const updateSpotPreferences = (spotId: number, updates: PreferenceUpdate): Promise<Preference> => 
+    apiFetch(`/preferences/spot/${spotId}`, { method: 'PUT', body: JSON.stringify(updates) });
 
 // ===== FORECASTS API =====
-export const getSpotForecast = (spotId: number): Promise<SpotForecast> => apiFetch(`/forecasts/spot/${spotId}`);
+export const getSpotForecast = (spotId: number): Promise<SpotForecast> => 
+    apiFetch(`/forecasts/spot/${spotId}`);
 
 // ===== RECOMMENDATIONS API =====
-export const getRecommendations = (request: RecommendationRequest): Promise<Recommendation[]> => apiFetch('/recommendations', { method: 'POST', body: JSON.stringify(request) });
+export const getRecommendations = (request: RecommendationRequest): Promise<Recommendation[]> => 
+    apiFetch('/recommendations', { method: 'POST', body: JSON.stringify(request) });
