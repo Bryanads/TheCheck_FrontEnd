@@ -1,4 +1,4 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-56043ed899e9911f49213e6ecb22787e09848d37/App.tsx
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-7ed86c7f11db5ca4cd2558f01a919a97b26206f5/App.tsx
 import React from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
@@ -12,6 +12,7 @@ import ProfilePage from './pages/ProfilePage';
 import PresetsPage from './pages/PresetsPage';
 import SpotsPage from './pages/SpotsPage';
 import SpotPreferencesPage from './pages/SpotPreferencesPage';
+import ForecastPage from './pages/ForecastsPage'; // 1. Importar a página
 import OnboardingProfilePage from './pages/Onboarding/OnboardingProfilePage';
 import OnboardingSpotsPage from './pages/Onboarding/OnboardingSpotsPage';
 import OnboardingSpotPreferencesPage from './pages/Onboarding/OnboardingSpotPreferencesPage';
@@ -20,10 +21,8 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import UpdatePasswordPage from './pages/UpdatePasswordPage';
 import { Header } from './components/layout/Header';
 
-// --- DEFINIÇÃO CORRETA DO COMPONENTE DE ROTA PROTEGIDA ---
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
-
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-screen bg-slate-900">
@@ -31,8 +30,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
             </div>
         );
     }
-
-    // A lógica de autenticação vem do hook, não dos 'children'
     return isAuthenticated ? <>{children}</> : <Navigate to="/auth" replace />;
 };
 
@@ -42,7 +39,6 @@ const App: React.FC = () => {
     const noHeaderPaths = ['/auth', '/forgot-password', '/update-password'];
     const isOnboardingRoute = location.pathname.startsWith('/onboarding');
 
-    // A verificação de carregamento principal da autenticação.
     if (isAuthLoading) {
         return (
             <div className="flex items-center justify-center h-screen bg-slate-900">
@@ -70,6 +66,10 @@ const App: React.FC = () => {
                         <Route path="/spots/:spotId/preferences" element={<ProtectedRoute><SpotPreferencesPage /></ProtectedRoute>} />
                         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                         <Route path="/presets" element={<ProtectedRoute><PresetsPage /></ProtectedRoute>} />
+                        
+                        {/* --- 2. ADICIONAR AS ROTAS DE PREVISÃO AQUI --- */}
+                        <Route path="/forecasts" element={<ProtectedRoute><ForecastPage /></ProtectedRoute>} />
+                        <Route path="/forecasts/:spotId" element={<ProtectedRoute><ForecastPage /></ProtectedRoute>} />
 
                         {/* Fluxo de Onboarding (também protegido) */}
                         <Route path="/onboarding/profile" element={<ProtectedRoute><OnboardingProfilePage /></ProtectedRoute>} />
@@ -89,4 +89,4 @@ const App: React.FC = () => {
     );
 };
 
-export default App;
+export default App; 
