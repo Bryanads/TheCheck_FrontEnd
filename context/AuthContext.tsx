@@ -1,10 +1,7 @@
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-56043ed899e9911f49213e6ecb22787e09848d37/context/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { supabase } from '../supabaseClient'; // Importe o cliente Supabase
-import { Session, User } from '@supabase/supabase-js'; // Importe os tipos do Supabase
-
-// Não precisamos mais gerenciar o token manualmente, o Supabase faz isso.
-// Mas mantemos a chave do cache principal
-export const THECHECK_CACHE_KEY = 'thecheck_cache';
+import { supabase } from '../supabaseClient';
+import { Session, User } from '@supabase/supabase-js';
 
 interface AuthContextType {
   session: Session | null;
@@ -13,25 +10,23 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   logout: () => Promise<void>;
-  // A função de login não é mais necessária, o Supabase gerencia isso
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Exportação nomeada para o Provider
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Pega a sessão inicial, se houver
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
     });
 
-    // Ouve mudanças no estado de autenticação (login, logout, etc.)
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
@@ -40,7 +35,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    // Limpa o listener quando o componente é desmontado
     return () => {
       authListener?.subscription.unsubscribe();
     };
@@ -48,30 +42,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    // Limpa o cache da aplicação ao fazer logout
-    localStorage.removeItem(THECHECK_CACHE_KEY);
-    sessionStorage.clear();
   };
 
   const value = {
     session,
     user,
     userId: user?.id || null,
-    isAuthenticated: !!session,
+    isAuthenticated: !!user,
     isLoading,
     logout: handleLogout,
   };
-  
-  // O updateUser pode ser adaptado para atualizar o perfil no Supabase se necessário
-  // mas por enquanto, vamos focar na autenticação.
 
   return (
     <AuthContext.Provider value={value}>
-      {!isLoading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
 
+// Exportação nomeada para o Hook
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {

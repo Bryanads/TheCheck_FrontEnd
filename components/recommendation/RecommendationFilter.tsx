@@ -1,96 +1,102 @@
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-56043ed899e9911f49213e6ecb22787e09848d37/components/recommendation/RecommendationFilter.tsx
 import React, { useState, useEffect } from 'react';
-import { Spot, Preset, RecommendationFilters } from '../../types';
+import { Spot, Preset, RecommendationRequest } from '../../types';
 import { FilterIcon, ChevronDownIcon, CheckIcon } from '../icons';
-import { toUTCTime, toLocalTime, weekdaysToDayOffset } from '../../utils/utils'; 
-
-const CUSTOM_FILTER_CACHE_KEY = 'thecheck_custom_filter_session';
+import { toUTCTime, toLocalTime } from '../../utils/utils';
 
 interface RecommendationFilterProps {
     spots: Spot[];
     presets: Preset[];
-    initialFilters: RecommendationFilters | null;
-    onSearch: (filters: RecommendationFilters) => void;
+    onSearch: (filters: RecommendationRequest) => void;
     loading: boolean;
+    activePresetName: string | null;
 }
 
-export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spots, presets, onSearch, loading }) => {
+const MAX_DAY_OFFSET = 6;
+
+export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spots, presets, onSearch, loading, activePresetName }) => {
     const [isFilterVisible, setIsFilterVisible] = useState(false);
     const [activeTab, setActiveTab] = useState<'preset' | 'custom'>('preset');
-    const [activePresetName, setActivePresetName] = useState<string | null>('Default');
-
+    
+    // State for custom filter
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>([]);
-    const [dayOffset, setDayOffset] = useState([0]);
+    const [daySelectionType, setDaySelectionType] = useState<'offsets' | 'weekdays'>('offsets');
+    const [daySelectionValues, setDaySelectionValues] = useState<number[]>([0]);
     const [startTime, setStartTime] = useState('06:00');
     const [endTime, setEndTime] = useState('18:00');
 
+    // Set initial state from default preset
     useEffect(() => {
-        const defaultPreset = presets.find(p => p.is_default);
+        const defaultPreset = presets.find(p => p.is_default) || presets[0];
         if (defaultPreset) {
-            setActivePresetName(defaultPreset.preset_name);
-        } else if (presets.length > 0) {
-            setActivePresetName(presets[0].preset_name);
-        }
-
-        const cachedCustomFilter = sessionStorage.getItem(CUSTOM_FILTER_CACHE_KEY);
-        if (cachedCustomFilter) {
-            const filters: RecommendationFilters = JSON.parse(cachedCustomFilter);
-            setSelectedSpotIds(filters.selectedSpotIds);
-            setDayOffset(filters.dayOffset);
-            setStartTime(toLocalTime(filters.startTime));
-            setEndTime(toLocalTime(filters.endTime));
-            setActivePresetName('Custom Filter');
-            setActiveTab('custom');
-        } else if (defaultPreset) {
             setSelectedSpotIds(defaultPreset.spot_ids);
-            setDayOffset(weekdaysToDayOffset(defaultPreset.weekdays));
+            setDaySelectionType(defaultPreset.day_selection_type);
+            setDaySelectionValues(defaultPreset.day_selection_values);
             setStartTime(toLocalTime(defaultPreset.start_time));
             setEndTime(toLocalTime(defaultPreset.end_time));
         }
-
     }, [presets]);
 
-    const handleSpotToggle = (spotId: number) => {
-        setSelectedSpotIds(prev => prev.includes(spotId) ? prev.filter(id => id !== spotId) : [...prev, spotId]);
-        setActivePresetName('Custom Filter');
-    };
-
     const handlePresetSearch = (preset: Preset) => {
-        const filters: RecommendationFilters = {
-            selectedSpotIds: preset.spot_ids,
-            dayOffset: weekdaysToDayOffset(preset.weekdays),
-            startTime: preset.start_time,
-            endTime: preset.end_time,
+        const request: RecommendationRequest = {
+            spot_ids: preset.spot_ids,
+            day_selection: {
+                type: preset.day_selection_type,
+                values: preset.day_selection_values
+            },
+            time_window: {
+                start: preset.start_time,
+                end: preset.end_time
+            }
         };
-        onSearch(filters);
-        setActivePresetName(preset.preset_name);
+        onSearch(request);
         setIsFilterVisible(false);
     };
 
     const handleCustomSearchClick = () => {
-        if (selectedSpotIds.length > 0) {
-            const filters = { 
-                selectedSpotIds, 
-                dayOffset, 
-                startTime: toUTCTime(startTime), 
-                endTime: toUTCTime(endTime) 
+        if (selectedSpotIds.length > 0 && daySelectionValues.length > 0) {
+            const request: RecommendationRequest = {
+                spot_ids: selectedSpotIds,
+                day_selection: {
+                    type: daySelectionType,
+                    values: daySelectionValues,
+                },
+                time_window: {
+                    start: toUTCTime(startTime),
+                    end: toUTCTime(endTime),
+                },
             };
-            onSearch(filters);
-            setActivePresetName('Custom Filter');
+            onSearch(request);
             setIsFilterVisible(false);
         }
     };
     
+    // --- Funções de controle para o formulário customizado ---
+    const handleDayTypeChange = (type: 'offsets' | 'weekdays') => {
+        setDaySelectionType(type);
+        setDaySelectionValues(type === 'offsets' ? [0] : []);
+    };
+
+    const handleOffsetChange = (newOffset: number) => {
+        const offset = Math.max(0, Math.min(newOffset, MAX_DAY_OFFSET));
+        const newValues = Array.from({ length: offset + 1 }, (_, i) => i);
+        setDaySelectionValues(newValues);
+    };
+
+    const handleWeekdayToggle = (dayIndex: number) => {
+        setDaySelectionValues(prev =>
+            prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]
+        );
+    };
+
     return (
         <div className="bg-slate-800/50 rounded-xl shadow-lg transition-all duration-300">
-            <div 
-                className="p-6 cursor-pointer flex justify-between items-center"
-                onClick={() => setIsFilterVisible(!isFilterVisible)}
-            >
+            <div className="p-6 cursor-pointer flex justify-between items-center" onClick={() => setIsFilterVisible(!isFilterVisible)}>
                 <div className="flex items-center">
                     <FilterIcon className="mr-3 w-7 h-7" />
                     <div>
                         <h1 className="text-2xl md:text-3xl font-bold text-white">Filtros</h1>
-                        <p className="text-sm text-cyan-300 font-medium">{activePresetName}</p>
+                        <p className="text-sm text-cyan-300 font-medium">{activePresetName || 'Selecione um filtro'}</p>
                     </div>
                 </div>
                 <ChevronDownIcon className={`w-6 h-6 text-slate-400 transition-transform duration-300 ${isFilterVisible ? 'rotate-180' : ''}`} />
@@ -99,18 +105,8 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
             {isFilterVisible && (
                 <div className="p-6 pt-0">
                     <div className="flex border-b border-slate-700">
-                        <button 
-                            onClick={() => setActiveTab('preset')}
-                            className={`py-2 px-4 font-medium transition-colors ${activeTab === 'preset' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Meus Presets
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('custom')}
-                            className={`py-2 px-4 font-medium transition-colors ${activeTab === 'custom' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Filtro Personalizado
-                        </button>
+                        <button onClick={() => setActiveTab('preset')} className={`py-2 px-4 font-medium transition-colors ${activeTab === 'preset' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}>Meus Presets</button>
+                        <button onClick={() => setActiveTab('custom')} className={`py-2 px-4 font-medium transition-colors ${activeTab === 'custom' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}>Filtro Personalizado</button>
                     </div>
 
                     {activeTab === 'preset' && (
@@ -118,13 +114,8 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                             <label className="block text-slate-300 font-medium mb-2">Selecione um Preset para buscar</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                 {presets.map(preset => (
-                                    <button 
-                                        key={preset.preset_id} 
-                                        onClick={() => handlePresetSearch(preset)} 
-                                        disabled={loading}
-                                        className="text-left p-3 rounded-md transition-colors bg-slate-700 hover:bg-slate-600 flex justify-between items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <span className="font-semibold">{preset.preset_name}</span>
+                                    <button key={preset.preset_id} onClick={() => handlePresetSearch(preset)} disabled={loading} className="text-left p-3 rounded-md transition-colors bg-slate-700 hover:bg-slate-600 flex justify-between items-center disabled:opacity-50">
+                                        <span className="font-semibold">{preset.name}</span>
                                         {preset.is_default && <span className="text-xs bg-cyan-800 text-cyan-200 px-2 py-0.5 rounded-full">Padrão</span>}
                                     </button>
                                 ))}
@@ -133,44 +124,51 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                     )}
 
                     {activeTab === 'custom' && (
-                        <div className="pt-6">
-                            <div className="grid md:grid-cols-3 gap-6">
-                                <div className="md:col-span-1">
-                                    <label className="block text-slate-300 font-medium mb-2">Spots de Surf</label>
-                                    <div className="max-h-48 overflow-y-auto bg-slate-700 p-2 rounded-lg space-y-2">
+                        <div className="pt-6 space-y-4">
+                            <div>
+                                <label className="block text-slate-300 font-medium mb-2">Spots de Surf</label>
+                                <div className="max-h-32 overflow-y-auto bg-slate-700 p-2 rounded-lg grid grid-cols-2 gap-2">
                                     {spots.map(spot => (
-                                        <button key={spot.spot_id} onClick={() => handleSpotToggle(spot.spot_id)} className={`w-full text-left p-2 rounded-md transition-colors ${selectedSpotIds.includes(spot.spot_id) ? 'bg-cyan-500 text-white font-bold' : 'hover:bg-slate-600'}`}>
-                                            {spot.spot_name}
+                                        <button key={spot.spot_id} onClick={() => setSelectedSpotIds(prev => prev.includes(spot.spot_id) ? prev.filter(id => id !== spot.spot_id) : [...prev, spot.spot_id])} className={`w-full text-left p-2 rounded-md transition-colors ${selectedSpotIds.includes(spot.spot_id) ? 'bg-cyan-500 text-white font-bold' : 'hover:bg-slate-600'}`}>
+                                            {spot.name}
                                         </button>
                                     ))}
-                                    </div>
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-slate-300 font-medium mb-2">Dias a partir de Hoje</label>
-                                    <select
-                                        value={JSON.stringify(dayOffset)}
-                                        onChange={(e) => {
-                                            setDayOffset(JSON.parse(e.target.value));
-                                            setActivePresetName('Custom Filter');
-                                        }}
-                                        className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    >
-                                        <option value="[0]">Hoje</option>
-                                        <option value="[1]">Amanhã</option>
-                                        <option value="[0,1]">Hoje & Amanhã</option>
-                                    </select>
-                                </div>
-                                <div className="flex flex-col md:col-span-1">
-                                    <label className="block text-slate-300 font-medium mb-2">Intervalo de Horas (Local)</label>
-                                    <div className="flex flex-col space-y-2">
-                                        <input type="time" value={startTime} onChange={(e) => { setStartTime(e.target.value); setActivePresetName('Custom Filter'); }} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>
-                                        <input type="time" value={endTime} onChange={(e) => { setEndTime(e.target.value); setActivePresetName('Custom Filter'); }} className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"/>
-                                    </div>
                                 </div>
                             </div>
+                            
+                            <div>
+                                <label className="block text-slate-300 font-medium mb-2">Dias para o Check</label>
+                                <div className="flex bg-slate-700 rounded-lg p-1">
+                                    <button type="button" onClick={() => handleDayTypeChange('offsets')} className={`flex-1 p-2 rounded-md font-semibold text-sm transition ${daySelectionType === 'offsets' ? 'bg-cyan-500 text-slate-900' : 'text-slate-300'}`}>A partir de Hoje</button>
+                                    <button type="button" onClick={() => handleDayTypeChange('weekdays')} className={`flex-1 p-2 rounded-md font-semibold text-sm transition ${daySelectionType === 'weekdays' ? 'bg-cyan-500 text-slate-900' : 'text-slate-300'}`}>Dias da Semana</button>
+                                </div>
+                                <div className="mt-2">
+                                    {daySelectionType === 'offsets' ? (
+                                        <div className="flex items-center justify-center space-x-4 bg-slate-700 p-2 rounded-lg">
+                                            <button type="button" onClick={() => handleOffsetChange(daySelectionValues.length - 2)} className="bg-slate-600 w-8 h-8 rounded-full font-bold">-</button>
+                                            <span className="font-bold w-24 text-center">{daySelectionValues.length} dia(s)</span>
+                                            <button type="button" onClick={() => handleOffsetChange(daySelectionValues.length)} className="bg-slate-600 w-8 h-8 rounded-full font-bold">+</button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-between items-center space-x-1">
+                                            {['D','S','T','Q','Q','S','S'].map((day, index) => (
+                                                <button key={index} type="button" onClick={() => handleWeekdayToggle(index)} className={`w-10 h-10 rounded-full font-bold transition-colors ${daySelectionValues.includes(index) ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300'}`}>{day}</button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-slate-300 font-medium mb-2">Intervalo de Horas (Local)</label>
+                                <div className="flex items-center space-x-4">
+                                    <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"/>
+                                    <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"/>
+                                </div>
+                            </div>
+
                             <div className="mt-6 text-right">
-                                <button onClick={handleCustomSearchClick} disabled={loading} className="bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-600 transition-all shadow-md shadow-cyan-500/30 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center float-right">
-                                    {loading && <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>}
+                                <button onClick={handleCustomSearchClick} disabled={loading || selectedSpotIds.length === 0} className="bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-600 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center float-right">
                                     <CheckIcon className="mr-2"/>
                                     Obter Recomendações
                                 </button>

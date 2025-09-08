@@ -1,13 +1,16 @@
-import { User } from '../types';
-// TESTANDO NOVA BRANCH !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-56043ed899e9911f49213e6ecb22787e09848d37/services/api.ts
+import { supabase } from '../supabaseClient';
+import {
+    Profile, ProfileUpdate, Spot, Preset, PresetCreate, PresetUpdate,
+    Preference, PreferenceUpdate, SpotForecast, Recommendation, RecommendationRequest
+} from '../types';
 
-// const API_BASE_URL = 'http://192.168.15.4:5000'; // Em casa
-// const API_BASE_URL = 'http://172.31.96.1:5000'; // Telefone
-const API_BASE_URL = 'https://thecheck-api.onrender.com'; // Deploy
-
+const API_BASE_URL = 'https://thecheckapi.onrender.com';
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const token = localStorage.getItem('thecheck_token');
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
     const headers = new Headers(options.headers || {});
     headers.set('Content-Type', 'application/json');
 
@@ -34,89 +37,26 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     }
 }
 
-// User Endpoints
-export const loginUser = (data: object) => {
-    console.log("Enviando para /users/login:", JSON.stringify(data, null, 2));
-    return apiFetch<{token: string, user_id: string, message: string}>('/users/login', { method: 'POST', body: JSON.stringify(data) });
-};
+// ===== PROFILE API =====
+export const getProfile = (): Promise<Profile> => apiFetch('/profile');
+export const updateProfile = (updates: ProfileUpdate): Promise<Profile> => apiFetch('/profile', { method: 'PUT', body: JSON.stringify(updates) });
 
-export const registerUser = (data: object) => {
-    console.log("Enviando para /users/register:", JSON.stringify(data, null, 2));
-    return apiFetch<{message: string, user_id: string}>('/users/register', { method: 'POST', body: JSON.stringify(data) });
-};
+// ===== SPOTS API =====
+export const getAllSpots = (): Promise<Spot[]> => apiFetch('/spots');
+export const getSpotById = (spotId: number): Promise<Spot> => apiFetch(`/spots/${spotId}`);
 
-export const getUserProfile = (userId: string) => {
-    console.log(`Buscando perfil para o usuário: ${userId}`);
-    return apiFetch<User>(`/users/profile/${userId}`);
-};
+// ===== PRESETS API =====
+export const getPresets = (): Promise<Preset[]> => apiFetch('/presets');
+export const createPreset = (preset: PresetCreate): Promise<Preset> => apiFetch('/presets', { method: 'POST', body: JSON.stringify(preset) });
+export const updatePreset = (presetId: number, updates: PresetUpdate): Promise<Preset> => apiFetch(`/presets/${presetId}`, { method: 'PUT', body: JSON.stringify(updates) });
+export const deletePreset = (presetId: number): Promise<void> => apiFetch(`/presets/${presetId}`, { method: 'DELETE' });
 
-export const updateUserProfile = (userId: string, data: object) => {
-    console.log(`Atualizando perfil para o usuário: ${userId} com dados:`, JSON.stringify(data, null, 2));
-    return apiFetch<{message: string, user: User}>(`/users/profile/${userId}`, { method: 'PUT', body: JSON.stringify(data) });
-};
+// ===== PREFERENCES API =====
+export const getSpotPreferences = (spotId: number): Promise<Preference> => apiFetch(`/preferences/spot/${spotId}`);
+export const updateSpotPreferences = (spotId: number, updates: PreferenceUpdate): Promise<Preference> => apiFetch(`/preferences/spot/${spotId}`, { method: 'PUT', body: JSON.stringify(updates) });
 
-// Spot Endpoints
-export const getSpots = () => {
-    console.log("Buscando todos os spots...");
-    return apiFetch<any[]>('/spots'); // Returns an array of spot objects
-};
+// ===== FORECASTS API =====
+export const getSpotForecast = (spotId: number): Promise<SpotForecast> => apiFetch(`/forecasts/spot/${spotId}`);
 
-// Forecast Endpoints
-export const getForecasts = (data: { spot_ids: number[], day_offset: number[] }) => {
-    console.log("Enviando para /forecasts:", JSON.stringify(data, null, 2));
-    return apiFetch<any[]>('/forecasts', { method: 'POST', body: JSON.stringify(data) });
-};
-
-// Recommendation Endpoints
-export const getRecommendations = async (data: object) => {
-    console.log("Enviando para /recommendations:", JSON.stringify(data, null, 2));
-    const response = await apiFetch<any[]>('/recommendations', { method: 'POST', body: JSON.stringify(data) });
-    console.log("Resposta da API /recommendations:", JSON.stringify(response, null, 2));
-    return response;
-};
-
-// Preset Endpoints
-export const getPresets = (userId: string) => {
-    console.log(`Buscando presets para o usuário: ${userId}`);
-    return apiFetch<any[]>(`/presets?user_id=${userId}`);
-};
-
-export const createPreset = (data: object) => {
-    console.log("Enviando para /presets (create):", JSON.stringify(data, null, 2));
-    return apiFetch<{message: string, preset_id: number}>('/presets', { method: 'POST', body: JSON.stringify(data) });
-};
-
-export const updatePreset = (presetId: number, data: object) => {
-    console.log(`Atualizando preset: ${presetId} com dados:`, JSON.stringify(data, null, 2));
-    return apiFetch<{message: string}>(`/presets/${presetId}`, { method: 'PUT', body: JSON.stringify(data) });
-};
-
-export const deletePreset = (presetId: number, userId: string) => {
-    console.log(`Deletando o preset: ${presetId} para o usuário: ${userId}`);
-    return apiFetch<{message: string}>(`/presets/${presetId}?user_id=${userId}`, { method: 'DELETE' });
-};
-
-// User Spot Preferences Endpoints
-export const getSpotPreferences = (userId: string, spotId: number) => {
-    console.log(`Buscando preferências para o usuário ${userId} no spot ${spotId}`);
-    return apiFetch<any>(`/user-spot-preferences/${userId}/${spotId}`);
-};
-
-export const setUserSpotPreferences = (userId: string, spotId: number, data: object) => {
-    console.log(`Salvando preferências para o usuário ${userId} no spot ${spotId}`);
-    return apiFetch<{message: string}>(`/user-spot-preferences/${userId}/${spotId}`, { method: 'POST', body: JSON.stringify(data) });
-};
-
-export const toggleSpotPreferenceActive = (userId: string, spotId: number, isActive: boolean) => {
-    console.log(`Setting preference for user ${userId} at spot ${spotId} to ${isActive ? 'active' : 'inactive'}`);
-    return apiFetch<{message: string}>(`/user-spot-preferences/${userId}/${spotId}/toggle`, {
-        method: 'PUT',
-        body: JSON.stringify({ is_active: isActive })
-    });
-};
-
-export const getLevelSpotPreferences = (userId: string, spotId: number) => {
-    console.log(`Fetching default level preferences for user ${userId} at spot ${spotId}`);
-    return apiFetch<any>(`/level-spot-preferences/${spotId}?user_id=${userId}`);
-};
-
+// ===== RECOMMENDATIONS API =====
+export const getRecommendations = (request: RecommendationRequest): Promise<Recommendation[]> => apiFetch('/recommendations', { method: 'POST', body: JSON.stringify(request) });

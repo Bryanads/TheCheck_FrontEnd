@@ -1,124 +1,129 @@
-export interface User {
-  user_id: string;
-  name: string;
-  email: string;
-  surf_level: 'maroleiro' | 'intermediario' ;
-  goofy_regular_stance: 'Regular' | 'Goofy'; 
-  preferred_wave_direction: 'Left' | 'Right' | 'Both';
-  bio?: string;
-  profile_picture_url?: string;
-}
-
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-56043ed899e9911f49213e6ecb22787e09848d37/types.ts
 export interface Spot {
   spot_id: number;
-  spot_name: string;
+  name: string;
   latitude: number;
   longitude: number;
   timezone: string;
+  bottom_type?: string;
+  break_type?: string;
+  difficulty_level?: string;
+  state?: string;
+  region?: string;
+  ideal_swell_direction?: number[];
+  ideal_wind_direction?: number[];
+  ideal_sea_level?: number;
+  ideal_tide_flow?: string[];
 }
 
-export interface Forecast {
+export interface Profile {
+  id: string;
+  name: string;
+  email: string;
+  location?: string;
+  bio?: string;
+  surf_level?: 'iniciante' | 'intermediario' | 'avancado';
+  stance?: 'regular' | 'goofy';
+}
+
+export interface ProfileUpdate {
+  name?: string;
+  location?: string;
+  bio?: string;
+  surf_level?: 'iniciante' | 'intermediario' | 'avancado';
+  stance?: 'regular' | 'goofy';
+}
+
+export interface Preset {
+  preset_id: number;
+  user_id: string;
+  name: string;
+  spot_ids: number[];
+  start_time: string; // "HH:MM:SS"
+  end_time: string;   // "HH:MM:SS"
+  day_selection_type: 'offsets' | 'weekdays';
+  day_selection_values: number[];
+  is_default: boolean;
+}
+
+export interface PresetCreate extends Omit<Preset, 'preset_id' | 'user_id'> {}
+export interface PresetUpdate extends Partial<Omit<Preset, 'preset_id' | 'user_id'>> {}
+
+export interface Preference {
+  preference_id: number;
+  user_id: string;
+  spot_id: number;
+  ideal_swell_height?: number;
+  max_swell_height?: number;
+  max_wind_speed?: number;
+  ideal_water_temperature?: number;
+  ideal_air_temperature?: number;
+  is_active: boolean;
+}
+
+export interface PreferenceUpdate extends Partial<Omit<Preference, 'preference_id' | 'user_id' | 'spot_id'>> {}
+
+export interface ForecastConditions {
+  wave_height_sg?: number;
+  wave_direction_sg?: number;
+  wave_period_sg?: number;
+  swell_height_sg?: number;
+  swell_direction_sg?: number;
+  swell_period_sg?: number;
+  secondary_swell_height_sg?: number;
+  secondary_swell_direction_sg?: number;
+  secondary_swell_period_sg?: number;
+  wind_speed_sg?: number;
+  wind_direction_sg?: number;
+  water_temperature_sg?: number;
+  air_temperature_sg?: number;
+  current_speed_sg?: number;
+  current_direction_sg?: number;
+  sea_level_sg?: number;
+  tide_type?: string;
+}
+
+export interface HourlyForecast {
+  timestamp_utc: string;
+  conditions: ForecastConditions;
+}
+
+export interface DailyForecast {
+  date: string;
+  hourly_data: HourlyForecast[];
+}
+
+export interface SpotForecast {
   spot_id: number;
   spot_name: string;
-  timestamp_utc: string;
-  wave_height_sg: number;
-  wave_direction_sg: number;
-  wave_period_sg: number;
-  swell_height_sg: number;
-  swell_direction_sg: number;
-  swell_period_sg: number;
-  secondary_swell_height_sg: number | null;
-  secondary_swell_direction_sg: number | null;
-  secondary_swell_period_sg: number | null;
-  wind_speed_sg: number;
-  wind_direction_sg: number;
-  water_temperature_sg: number;
-  air_temperature_sg: number;
-  current_speed_sg: number | null;
-  current_direction_sg: number | null;
-  sea_level_sg: number;
-  tide_phase: 'Rising' | 'Falling' | 'High' | 'Low';
+  daily_forecasts: DailyForecast[];
+}
+
+export interface RecommendationRequest {
+  spot_ids: number[];
+  day_selection: {
+    type: 'offsets' | 'weekdays';
+    values: number[];
+  };
+  time_window: {
+    start: string; // "HH:MM:SS"
+    end: string;   // "HH:MM:SS"
+  };
+  limit?: number;
 }
 
 export interface DetailedScores {
   wave_score: number;
   wind_score: number;
   tide_score: number;
-  water_temperature_score: number;
   air_temperature_score: number;
-  current_score: number;
+  water_temperature_score: number;
 }
 
-export interface HourlyRecommendation {
-  timestamp_utc: string;
-  suitability_score: number;
-  detailed_scores: DetailedScores;
-  forecast_conditions: Omit<Forecast, 'spot_id' | 'spot_name'>;
-  spot_characteristics: {
-    bottom_type: string | null;
-    coast_orientation: string | null;
-    general_characteristics: string | null;
-  };
-}
-
-export interface DayOffsetRecommendations {
-  day_offset: number;
-  recommendations: HourlyRecommendation[];
-}
-
-export interface SpotPreferences {
-  user_preference_id: number;
-  user_id: string;
+export interface Recommendation {
   spot_id: number;
-  min_wave_height: number;
-  max_wave_height: number;
-  ideal_wave_height: number;
-  min_wave_period: number;
-  max_wave_period: number;
-  ideal_wave_period: number;
-  min_swell_height: number;
-  max_swell_height: number;
-  ideal_swell_height: number;
-  min_swell_period: number;
-  max_swell_period: number;
-  ideal_swell_period: number;
-  preferred_wave_direction: string;
-  preferred_swell_direction: string;
-  ideal_tide_type: string;
-  min_sea_level: number;
-  max_sea_level: number;
-  ideal_sea_level: number;
-  min_wind_speed: number;
-  max_wind_speed: number;
-  ideal_wind_speed: number;
-  preferred_wind_direction: string;
-  ideal_water_temperature: number;
-  ideal_air_temperature: number;
-  is_active: boolean
-}
-
-export interface SpotRecommendation {
   spot_name: string;
-  spot_id: number;
-  preferences_used_for_spot: SpotPreferences; // <-- PROPRIEDADE CORRIGIDA
-  day_offsets: DayOffsetRecommendations[];
-}
-
-export interface Preset {
-    preset_id: number;
-    user_id: string;
-    preset_name: string;
-    spot_ids: number[];
-    start_time: string;
-    end_time: string;
-    weekdays: number[];
-    is_default: boolean;
-    is_active: boolean;
-}
-
-export interface RecommendationFilters {
-    selectedSpotIds: number[];
-    dayOffset: number[];
-    startTime: string;
-    endTime: string;
+  timestamp_utc: string; // ISO 8601 date string
+  overall_score: number;
+  detailed_scores: DetailedScores;
 }
