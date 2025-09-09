@@ -96,7 +96,7 @@ export interface DailyForecast {
 export interface SpotForecast {
   spot_id: number;
   spot_name: string;
-  daily_forecasts: DailyForecast[];
+  forecasts: HourlyForecast[]; 
 }
 
 export interface RecommendationRequest {
