@@ -1,10 +1,11 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-257372b264015bb625354d50453cccf037b6e08b/pages/ForecastsPage.tsx
+// bryanads/thecheck_frontend/TheCheck_FrontEnd/src/pages/ForecastsPage.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useSpots, useSpotForecast } from '../hooks';
-import { Spot, DailyForecast, HourlyForecast } from '../types';
+import { Spot, HourlyForecast } from '../types';
 import { WaveIcon } from '../components/icons';
-import { ForecastDetail } from '../components/forecasts/ForecastDetail';
+import { ContinuousForecastChart } from '../components/forecasts/ContinuousForecastChart';
+import { ForecastHeader } from '../components/forecasts/ForecastHeader';
 
 const ForecastsPage: React.FC = () => {
     const { spotId: spotIdParam } = useParams<{ spotId: string }>();
@@ -14,80 +15,79 @@ const ForecastsPage: React.FC = () => {
     
     const { data: spots, isLoading: isLoadingSpots } = useSpots();
     const [selectedSpotId, setSelectedSpotId] = useState<number | null>(null);
-    const [selectedDayIndex, setSelectedDayIndex] = useState(0);
-
+    const [spotlightHour, setSpotlightHour] = useState<HourlyForecast | null>(null);
+    
     const { data: forecast, isLoading: isLoadingForecast } = useSpotForecast(selectedSpotId);
 
-    const dailyForecastsByLocalTime = useMemo((): DailyForecast[] => {
+    const allHourlyData = useMemo(() => {
         if (!forecast?.forecasts) return [];
+        
+        // Lógica aprimorada para exibir a partir da meia-noite de hoje
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Meia-noite no fuso local
 
-        const groupedByDate: { [key: string]: HourlyForecast[] } = {};
+        // Filtra os dados para começar a partir da meia-noite de hoje
+        const relevantForecasts = forecast.forecasts.filter(hour => new Date(hour.timestamp_utc) >= startOfToday);
 
-        forecast.forecasts.forEach(hourly => {
-            const localDate = new Date(hourly.timestamp_utc);
-            const dateKey = localDate.toISOString().split('T')[0];
+        const processedData: any[] = [];
+        let lastLocalDate: string | null = null;
 
-            if (!groupedByDate[dateKey]) {
-                groupedByDate[dateKey] = [];
+        relevantForecasts.forEach(hour => {
+            const hourDate = new Date(hour.timestamp_utc);
+            const currentLocalDate = hourDate.toLocaleDateString('pt-BR');
+            const isStartOfDay = currentLocalDate !== lastLocalDate;
+
+            if (isStartOfDay) {
+                lastLocalDate = currentLocalDate;
             }
-            groupedByDate[dateKey].push(hourly);
+
+            processedData.push({
+                time: hourDate.toLocaleTimeString('pt-BR', { hour: '2-digit' }) + 'h',
+                dayLabel: isStartOfDay ? hourDate.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric' }) : '',
+                fullDateLabel: hourDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' }),
+                isStartOfDay,
+                ...hour.conditions,
+                timestamp_utc: hour.timestamp_utc,
+                originalData: hour,
+            });
         });
+        
+        // Adiciona os separadores visuais entre os dias
+        const finalDataWithSeparators: any[] = [];
+        for (let i = 0; i < processedData.length; i++) {
+            // Adiciona um separador *antes* do primeiro item de um novo dia (exceto o primeiro de todos)
+            if (processedData[i].isStartOfDay && i > 0) {
+                 finalDataWithSeparators.push({ isSeparator: true, isSeparatorLine: true, timestamp_utc: `sep-${processedData[i].timestamp_utc}` });
+            }
+            finalDataWithSeparators.push(processedData[i]);
+        }
 
-        return Object.entries(groupedByDate)
-            .map(([date, hourly_data]) => ({ date, hourly_data }))
-            .sort((a, b) => a.date.localeCompare(b.date));
-
+        return finalDataWithSeparators;
     }, [forecast]);
 
-
-    // ATUALIZAÇÃO PRINCIPAL AQUI
     useEffect(() => {
         const numericSpotId = parseInt(spotIdParam || '0', 10);
-        if (numericSpotId > 0) {
-            setSelectedSpotId(numericSpotId);
-        }
+        if (numericSpotId > 0) setSelectedSpotId(numericSpotId);
         
-        // Só executa a lógica se os dados já foram processados
-        if (dailyForecastsByLocalTime.length > 0) {
-            let initialDayIndex = 0;
-
-            if (highlightedTimestamp) {
-                // Se viemos de outra página com um horário, mantém o comportamento antigo
-                const highlightDate = new Date(highlightedTimestamp).toISOString().split('T')[0];
-                const dayIndex = dailyForecastsByLocalTime.findIndex(d => d.date === highlightDate);
-                if (dayIndex !== -1) {
-                    initialDayIndex = dayIndex;
-                }
-            } else {
-                // NOVO: Lógica para encontrar e selecionar o dia de "hoje"
-                const todayStr = new Date().toISOString().split('T')[0];
-                const todayIndex = dailyForecastsByLocalTime.findIndex(d => d.date === todayStr);
-                
-                if (todayIndex !== -1) {
-                    // Se encontrou "hoje" nos dados, define como o dia inicial
-                    initialDayIndex = todayIndex;
-                } else {
-                    // Fallback: se "hoje" não estiver nos dados, mostra o primeiro dia disponível
-                    // (que provavelmente será "ontem", já que a API envia -24h)
-                    initialDayIndex = 0;
-                }
-            }
-            setSelectedDayIndex(initialDayIndex);
+        if (allHourlyData.length > 0) {
+            // Define a hora inicial em destaque
+            const initialHour = highlightedTimestamp
+                ? allHourlyData.find(h => h.timestamp_utc === highlightedTimestamp)?.originalData
+                : allHourlyData.find(h => !h.isSeparator)?.originalData; // Pega o primeiro dado válido (que será a primeira hora de hoje)
+            setSpotlightHour(initialHour || null);
         }
-    }, [spotIdParam, highlightedTimestamp, dailyForecastsByLocalTime]);
+    }, [spotIdParam, highlightedTimestamp, allHourlyData]);
     
     const handleSpotChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const spotId = parseInt(e.target.value, 10);
-        navigate(`/forecasts/${spotId}`);
+        navigate(spotId > 0 ? `/forecasts/${spotId}` : '/forecasts');
     };
-
-    const selectedDayData = dailyForecastsByLocalTime[selectedDayIndex];
 
     return (
         <div className="space-y-8">
             <div>
                 <h1 className="text-4xl font-bold text-white mb-4">Previsão Detalhada</h1>
-                <p className="text-slate-400">Selecione um pico para ver as condições para os próximos 7 dias.</p>
+                <p className="text-slate-400">Selecione um pico e clique ou passe o mouse sobre o gráfico para ver os detalhes de cada horário.</p>
             </div>
 
             <div className="bg-slate-800/50 p-6 rounded-xl">
@@ -97,32 +97,24 @@ const ForecastsPage: React.FC = () => {
                 </select>
             </div>
 
+            {selectedSpotId && <ForecastHeader spotlightHour={spotlightHour} />}
+
             {isLoadingForecast && <div className="text-center p-10"><div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div></div>}
 
-            {dailyForecastsByLocalTime.length > 0 && selectedDayData && (
-                <div className="animate-fade-in">
-                    <div className="flex space-x-2 overflow-x-auto pb-2">
-                        {dailyForecastsByLocalTime.map((day, index) => (
-                            <button 
-                                key={day.date} 
-                                onClick={() => setSelectedDayIndex(index)}
-                                className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition ${selectedDayIndex === index ? 'bg-cyan-500 text-slate-900' : 'bg-slate-700 text-slate-300'}`}
-                            >
-                                {/* Adicionado T00:00:00Z para garantir que a data seja tratada como UTC e não sofra shift de fuso horário na exibição */}
-                                {new Date(day.date + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' })}
-                            </button>
-                        ))}
-                    </div>
-                    
-                    <ForecastDetail 
-                        dailyForecast={selectedDayData} 
-                        // O highlightedTimestamp só será usado se vier de outra página
-                        highlightedTimestamp={highlightedTimestamp} 
-                    />
-                </div>
+            {forecast && allHourlyData.length > 0 && (
+                <ContinuousForecastChart 
+                    allHourlyData={allHourlyData} 
+                    highlightedTimestamp={spotlightHour?.timestamp_utc}
+                    onBarClick={setSpotlightHour}
+                />
             )}
 
-            {!selectedSpotId && !isLoadingForecast && <div className="text-center p-10 bg-slate-800/50 rounded-xl"><WaveIcon className="w-12 h-12 mx-auto text-slate-500" /><h3 className="mt-4 text-xl font-bold text-white">Nenhum pico selecionado</h3></div>}
+            {!selectedSpotId && !isLoadingForecast && (
+                 <div className="text-center p-10 bg-slate-800/50 rounded-xl">
+                    <WaveIcon className="w-12 h-12 mx-auto text-slate-500" />
+                    <h3 className="mt-4 text-xl font-bold text-white">Nenhum pico selecionado</h3>
+                 </div>
+            )}
         </div>
     );
 };

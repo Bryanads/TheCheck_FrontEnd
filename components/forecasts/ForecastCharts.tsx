@@ -1,7 +1,8 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-7ed86c7f11db5ca4cd2558f01a919a97b26206f5/components/forecasts/ForecastCharts.tsx
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-257372b264015bb625354d50453cccf037b6e08b/components/forecasts/ForecastCharts.tsx
 import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
 import { HourlyForecast } from '../../types';
+import { WaveIcon, WindIcon, ChartBarIcon } from '../icons'; // Importando os ícones
 
 interface ForecastChartsProps {
     hourlyData: HourlyForecast[];
@@ -25,6 +26,7 @@ const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
     return null;
 };
 
+// Componente de Gráfico Refatorado para incluir Título e Ícone
 const Chart: React.FC<{
     data: any[];
     dataKey: string;
@@ -32,15 +34,20 @@ const Chart: React.FC<{
     unit: string;
     color: string;
     highlightedTimestamp: string;
-}> = ({ data, dataKey, name, unit, color, highlightedTimestamp }) => {
+    icon: React.ReactNode;
+}> = ({ data, dataKey, name, unit, color, highlightedTimestamp, icon }) => {
     const highlightColor = "#22d3ee"; // cyan-400
 
     return (
-        <div>
-            <h4 className="font-bold text-slate-200 mb-2">{name} ({unit})</h4>
+        <div className="bg-slate-900/50 p-4 rounded-lg">
+            {/* NOVO: Cabeçalho do Gráfico */}
+            <div className="flex items-center mb-3">
+                <div className="w-7 h-7 mr-3 text-cyan-400">{icon}</div>
+                <h4 className="text-lg font-bold text-white">{name}</h4>
+            </div>
             <ResponsiveContainer width="100%" height={150}>
                 <BarChart data={data} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="2 2" strokeOpacity={0.3} />
+                    <CartesianGrid strokeDasharray="2 2" strokeOpacity={0.2} />
                     <XAxis dataKey="time" tick={{ fill: '#94a3b8', fontSize: 12 }} />
                     <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} unit={unit} domain={[0, 'auto']} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(100, 116, 139, 0.2)' }} />
@@ -62,7 +69,7 @@ export const ForecastCharts: React.FC<ForecastChartsProps> = ({ hourlyData, high
         swell_height_sg: h.conditions.swell_height_sg ?? 0,
         wind_speed_sg: h.conditions.wind_speed_sg ?? 0,
         sea_level_sg: h.conditions.sea_level_sg ?? 0,
-        originalData: h, // Mantém a referência ao objeto original para o clique
+        originalData: h,
     }));
 
     const handleChartClick = (data: any) => {
@@ -73,10 +80,41 @@ export const ForecastCharts: React.FC<ForecastChartsProps> = ({ hourlyData, high
 
     return (
         <div className="bg-slate-800/70 backdrop-blur-sm rounded-lg p-4 mt-4 relative">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
-                <div onClick={handleChartClick}><Chart data={chartData} dataKey="swell_height_sg" name="Altura do Swell" unit="m" color="#06b6d4" highlightedTimestamp={highlightedTimestamp} /></div>
-                <div onClick={handleChartClick}><Chart data={chartData} dataKey="wind_speed_sg" name="Velocidade do Vento" unit="m/s" color="#eab308" highlightedTimestamp={highlightedTimestamp} /></div>
-                <div onClick={handleChartClick}><Chart data={chartData} dataKey="sea_level_sg" name="Nível da Maré" unit="m" color="#22c55e" highlightedTimestamp={highlightedTimestamp} /></div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div onClick={handleChartClick}>
+                    <Chart 
+                        data={chartData} 
+                        dataKey="swell_height_sg" 
+                        name="Altura do Swell" 
+                        unit="m" 
+                        color="#06b6d4" 
+                        highlightedTimestamp={highlightedTimestamp} 
+                        icon={<WaveIcon />}
+                    />
+                </div>
+                <div onClick={handleChartClick}>
+                    <Chart 
+                        data={chartData} 
+                        dataKey="wind_speed_sg" 
+                        name="Velocidade do Vento" 
+                        unit="m/s" 
+                        color="#eab308" 
+                        highlightedTimestamp={highlightedTimestamp} 
+                        icon={<WindIcon />}
+                    />
+                </div>
+                {/* Deixando o gráfico de maré ocupar a largura total em telas maiores */}
+                <div onClick={handleChartClick} className="lg:col-span-2">
+                    <Chart 
+                        data={chartData} 
+                        dataKey="sea_level_sg" 
+                        name="Nível da Maré" 
+                        unit="m" 
+                        color="#22c55e" 
+                        highlightedTimestamp={highlightedTimestamp} 
+                        icon={<ChartBarIcon />}
+                    />
+                </div>
             </div>
         </div>
     );

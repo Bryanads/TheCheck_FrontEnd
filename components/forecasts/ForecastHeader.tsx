@@ -44,7 +44,7 @@ export const ForecastHeader: React.FC<ForecastHeaderProps> = ({ spotlightHour })
                 <div className="flex items-center justify-center gap-x-6 sm:gap-x-8">
                     <InfoBlock 
                         icon={<WaveIcon className="w-8 h-8 text-cyan-500" />}
-                        label="Onda (Swell)"
+                        label="Onda"
                         value={`${conditions.swell_height_sg?.toFixed(1) || '-'}m`}
                         subValue={`${conditions.swell_period_sg?.toFixed(0) || '-'}s | ${degreesToCardinal(conditions.swell_direction_sg ?? 0)}`}
                     />
