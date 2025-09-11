@@ -55,7 +55,7 @@ export const ForecastHeader: React.FC<ForecastHeaderProps> = ({ spotlightHour })
                         subValue={`${degreesToCardinal(conditions.wind_direction_sg ?? 0)}`}
                     />
                     <InfoBlock 
-                        icon={<WaveIcon className="w-8 h-8 text-cyan-500 opacity-50" />} // Usando WaveIcon como placeholder para maré
+                        icon={<WaveIcon className="w-8 h-8 text-cyan-500 opacity-50" />}
                         label="Maré"
                         value={`${conditions.sea_level_sg?.toFixed(2) || '-'}m`}
                         subValue={conditions.tide_type || ''}

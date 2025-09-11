@@ -1,4 +1,4 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-56043ed899e9911f49213e6ecb22787e09848d37/components/recommendation/RecommendationFilter.tsx
+// bryanads/thecheck_frontend/TheCheck_FrontEnd/src/components/recommendation/RecommendationFilter.tsx
 import React, { useState, useEffect } from 'react';
 import { Spot, Preset, RecommendationRequest } from '../../types';
 import { FilterIcon, ChevronDownIcon, CheckIcon } from '../icons';
@@ -18,14 +18,14 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
     const [isFilterVisible, setIsFilterVisible] = useState(false);
     const [activeTab, setActiveTab] = useState<'preset' | 'custom'>('preset');
     
-    // State for custom filter
+    // State para o filtro customizado
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>([]);
     const [daySelectionType, setDaySelectionType] = useState<'offsets' | 'weekdays'>('offsets');
     const [daySelectionValues, setDaySelectionValues] = useState<number[]>([0]);
     const [startTime, setStartTime] = useState('06:00');
     const [endTime, setEndTime] = useState('18:00');
 
-    // Set initial state from default preset
+    // Define o estado inicial a partir do preset padrão
     useEffect(() => {
         const defaultPreset = presets.find(p => p.is_default) || presets[0];
         if (defaultPreset) {
@@ -71,7 +71,6 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
         }
     };
     
-    // --- Funções de controle para o formulário customizado ---
     const handleDayTypeChange = (type: 'offsets' | 'weekdays') => {
         setDaySelectionType(type);
         setDaySelectionValues(type === 'offsets' ? [0] : []);

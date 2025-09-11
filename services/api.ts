@@ -1,10 +1,11 @@
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-a52b3568a35c7807a1797de0fa3a908a8d5dfe5c/services/api.ts
 import { supabase } from '../supabaseClient';
 import {
     Profile, ProfileUpdate, Spot, Preset, PresetCreate, PresetUpdate,
-    Preference, PreferenceUpdate, SpotForecast, Recommendation, RecommendationRequest
+    Preference, PreferenceUpdate, SpotForecast, DailyRecommendation, RecommendationRequest
 } from '../types';
 
-const API_BASE_URL = 'https://thecheckapi.onrender.com';
+const API_BASE_URL = 'http://localhost:8000';
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
     const { data: { session } } = await supabase.auth.getSession();
@@ -26,7 +27,6 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
                 status: response.status 
             }));
             
-            // Adiciona o status do erro para melhor handling
             const error = new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
             (error as any).status = response.status;
             throw error;
@@ -53,7 +53,6 @@ export const getAllSpots = (): Promise<Spot[]> => apiFetch('/spots');
 export const getSpotById = (spotId: number): Promise<Spot> => apiFetch(`/spots/${spotId}`);
 
 // ===== PRESETS API =====
-// CORREÇÃO: Remove o parâmetro userId se a API não precisa dele na URL
 export const getPresets = (): Promise<Preset[]> => apiFetch('/presets');
 export const createPreset = (preset: PresetCreate): Promise<Preset> => 
     apiFetch('/presets', { method: 'POST', body: JSON.stringify(preset) });
@@ -73,5 +72,6 @@ export const getSpotForecast = (spotId: number): Promise<SpotForecast> =>
     apiFetch(`/forecasts/spot/${spotId}`);
 
 // ===== RECOMMENDATIONS API =====
-export const getRecommendations = (request: RecommendationRequest): Promise<Recommendation[]> => 
+// CORREÇÃO: A função agora retorna uma Promise do novo tipo DailyRecommendation[]
+export const getRecommendations = (request: RecommendationRequest): Promise<DailyRecommendation[]> => 
     apiFetch('/recommendations', { method: 'POST', body: JSON.stringify(request) });

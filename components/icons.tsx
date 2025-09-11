@@ -26,7 +26,12 @@ export const UserIcon: React.FC<{className?: string}> = ({ className }) => (
 );
 
 export const WaveIcon: React.FC<{className?: string}> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" transform="M0 0 c 3 0 5 -3 8 -3 s 5 3 8 3 s 5 -3 8 -3 v 24 h -24 z" pathLength="1" stroke="none" fill="currentColor" opacity="0.1" /><path d="M4 6c3 0 5-3 8-3s5 3 8 3" /><path d="M4 12c3 0 5-3 8-3s5 3 8 3" /><path d="M4 18c3 0 5-3 8-3s5 3 8 3" /></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" pathLength="1" stroke="none" fill="currentColor" opacity="0.1" />
+        <path d="M4 6c3 0 5-3 8-3s5 3 8 3" />
+        <path d="M4 12c3 0 5-3 8-3s5 3 8 3" />
+        <path d="M4 18c3 0 5-3 8-3s5 3 8 3" />
+    </svg>
 );
 
 export const CogsIcon: React.FC<{className?: string}> = ({ className }) => (

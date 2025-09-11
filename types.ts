@@ -1,4 +1,4 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-56043ed899e9911f49213e6ecb22787e09848d37/types.ts
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-a52b3568a35c7807a1797de0fa3a908a8d5dfe5c/types.ts
 export interface Spot {
   spot_id: number;
   name: string;
@@ -120,10 +120,38 @@ export interface DetailedScores {
   water_temperature_score: number;
 }
 
-export interface Recommendation {
+export interface SpotDailySummary {
   spot_id: number;
   spot_name: string;
-  timestamp_utc: string; // ISO 8601 date string
+  best_hour_utc: string;
+  best_overall_score: number;
+  detailed_scores: DetailedScores;
+  forecast_conditions: ForecastConditions;
+}
+
+export interface DailyRecommendation {
+  date: string; // Formato "YYYY-MM-DD"
+  ranked_spots: SpotDailySummary[];
+}
+
+
+export interface HourlyRecommendation {
+  spot_id: number;
+  spot_name: string;
+  timestamp_utc: string;
   overall_score: number;
   detailed_scores: DetailedScores;
+  forecast_conditions: ForecastConditions;
+}
+
+export interface DayOffsetRecommendations {
+    day_offset: number;
+    recommendations: HourlyRecommendation[];
+}
+
+export interface SpotRecommendation {
+    spot_id: number;
+    spot_name: string;
+    preferences_used_for_spot: Preference;
+    day_offsets: DayOffsetRecommendations[];
 }
