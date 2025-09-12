@@ -1,8 +1,7 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-7ed86c7f11db5ca4cd2558f01a919a97b26206f5/App.tsx
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-1727b3a4122cab389de3a8341a5c0d2dc93cbca5/App.tsx
 import React from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import { OnboardingProvider } from './context/OnboardingContext';
 
 // Import de Páginas
 import HomePage from './pages/HomePage';
@@ -12,11 +11,9 @@ import ProfilePage from './pages/ProfilePage';
 import PresetsPage from './pages/PresetsPage';
 import SpotsPage from './pages/SpotsPage';
 import SpotPreferencesPage from './pages/SpotPreferencesPage';
-import ForecastPage from './pages/ForecastsPage'; // 1. Importar a página
-import OnboardingProfilePage from './pages/Onboarding/OnboardingProfilePage';
-import OnboardingSpotsPage from './pages/Onboarding/OnboardingSpotsPage';
-import OnboardingSpotPreferencesPage from './pages/Onboarding/OnboardingSpotPreferencesPage';
-import OnboardingPresetPage from './pages/Onboarding/OnboardingPresetPage';
+import ForecastPage from './pages/ForecastsPage';
+// NOVA PÁGINA DE ONBOARDING
+import OnboardingPage from './pages/OnboardingPage'; 
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import UpdatePasswordPage from './pages/UpdatePasswordPage';
 import { Header } from './components/layout/Header';
@@ -37,6 +34,7 @@ const App: React.FC = () => {
     const { isLoading: isAuthLoading } = useAuth();
     const location = useLocation();
     const noHeaderPaths = ['/auth', '/forgot-password', '/update-password'];
+    // Adicionada a nova rota de onboarding para não exibir o header
     const isOnboardingRoute = location.pathname.startsWith('/onboarding');
 
     if (isAuthLoading) {
@@ -52,32 +50,25 @@ const App: React.FC = () => {
             {!noHeaderPaths.includes(location.pathname) && !isOnboardingRoute && <Header />}
 
             <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-                <OnboardingProvider>
-                    <Routes>
-                        {/* Rotas Públicas */}
-                        <Route path="/" element={<HomePage />} />
-                        <Route path="/auth" element={<AuthPage />} />
-                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                        <Route path="/update-password" element={<UpdatePasswordPage />} />
+                <Routes>
+                    {/* Rotas Públicas */}
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/update-password" element={<UpdatePasswordPage />} />
 
-                        {/* Rotas Protegidas */}
-                        <Route path="/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
-                        <Route path="/spots" element={<ProtectedRoute><SpotsPage /></ProtectedRoute>} />
-                        <Route path="/spots/:spotId/preferences" element={<ProtectedRoute><SpotPreferencesPage /></ProtectedRoute>} />
-                        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-                        <Route path="/presets" element={<ProtectedRoute><PresetsPage /></ProtectedRoute>} />
-                        
-                        {/* --- 2. ADICIONAR AS ROTAS DE PREVISÃO AQUI --- */}
-                        <Route path="/forecasts" element={<ProtectedRoute><ForecastPage /></ProtectedRoute>} />
-                        <Route path="/forecasts/:spotId" element={<ProtectedRoute><ForecastPage /></ProtectedRoute>} />
+                    {/* Rota Protegida para Onboarding */}
+                    <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
 
-                        {/* Fluxo de Onboarding (também protegido) */}
-                        <Route path="/onboarding/profile" element={<ProtectedRoute><OnboardingProfilePage /></ProtectedRoute>} />
-                        <Route path="/onboarding/spots" element={<ProtectedRoute><OnboardingSpotsPage /></ProtectedRoute>} />
-                        <Route path="/onboarding/spots/:spotId/preferences" element={<ProtectedRoute><OnboardingSpotPreferencesPage /></ProtectedRoute>} />
-                        <Route path="/onboarding/preset" element={<ProtectedRoute><OnboardingPresetPage /></ProtectedRoute>} />
-                    </Routes>
-                </OnboardingProvider>
+                    {/* Rotas Protegidas */}
+                    <Route path="/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
+                    <Route path="/spots" element={<ProtectedRoute><SpotsPage /></ProtectedRoute>} />
+                    <Route path="/spots/:spotId/preferences" element={<ProtectedRoute><SpotPreferencesPage /></ProtectedRoute>} />
+                    <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                    <Route path="/presets" element={<ProtectedRoute><PresetsPage /></ProtectedRoute>} />
+                    <Route path="/forecasts" element={<ProtectedRoute><ForecastPage /></ProtectedRoute>} />
+                    <Route path="/forecasts/:spotId" element={<ProtectedRoute><ForecastPage /></ProtectedRoute>} />
+                </Routes>
             </main>
 
             {!noHeaderPaths.includes(location.pathname) && !isOnboardingRoute && (
@@ -89,4 +80,4 @@ const App: React.FC = () => {
     );
 };
 
-export default App; 
+export default App;

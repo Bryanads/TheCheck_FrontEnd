@@ -1,3 +1,4 @@
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-1727b3a4122cab389de3a8341a5c0d2dc93cbca5/pages/AuthPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -86,7 +87,8 @@ const AuthPage: React.FC = () => {
       
       // Limpa o sessionStorage no sucesso
       sessionStorage.removeItem('emailForVerification');
-      navigate('/onboarding/profile');
+      // AQUI A MUDANÇA: Redireciona para a nova página de onboarding
+      navigate('/onboarding');
 
     } catch (err: any) {
       setError(err.error_description || err.message || "Código inválido ou expirado.");
@@ -107,7 +109,7 @@ const AuthPage: React.FC = () => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      navigate('/loading');
+      navigate('/recommendations'); // Mantido para login de usuários existentes
     } catch (err: any) {
         const errorMessage = err.error_description || err.message || '';
         
