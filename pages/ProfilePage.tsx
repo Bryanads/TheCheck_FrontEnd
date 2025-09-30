@@ -90,7 +90,8 @@ const ProfilePage: React.FC = () => {
                         <select name="surf_level" id="surf_level" value={formData.surf_level || 'intermediario'} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg">
                             <option value="iniciante">Iniciante</option>
                             <option value="intermediario">Intermediário</option>
-                            <option value="avancado">Avançado</option>
+                            <option value="maroleiro">Maroleiro</option>
+                            <option value="pro">Pro</option>
                         </select>
                     </div>
                      <div>

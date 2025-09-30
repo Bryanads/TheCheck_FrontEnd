@@ -1,4 +1,4 @@
-// pages/RecommendationsPage.tsx
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-99e2816aadc115d87eae7a22675f6dd24cc0b9d9/pages/RecommendationsPage.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePresets, useSpots, useRecommendations } from '../hooks';
@@ -18,6 +18,24 @@ const RecommendationsPage: React.FC = () => {
     const recommendationRequest = useMemo(() => filters, [filters]);
     const { data: recommendations, isFetching: isRecommendationLoading, error } = useRecommendations(recommendationRequest);
 
+    // *** LÓGICA DE FILTRO NO FRONTEND ***
+    const futureRecommendations = useMemo(() => {
+        if (!recommendations) return [];
+
+        const now = new Date();
+
+        // 1. Filtra os spots de cada dia para remover os que já passaram
+        const filteredDays = recommendations.map(day => {
+            const futureSpots = day.ranked_spots.filter(spot => new Date(spot.best_hour_utc) > now);
+            return { ...day, ranked_spots: futureSpots };
+        });
+
+        // 2. Filtra os dias que ficaram sem nenhum spot após a limpeza
+        return filteredDays.filter(day => day.ranked_spots.length > 0);
+
+    }, [recommendations]);
+
+
     // Efeito para carregar o preset padrão na primeira vez
     useEffect(() => {
         if (presets && presets.length > 0 && !filters) {
@@ -33,10 +51,10 @@ const RecommendationsPage: React.FC = () => {
         }
     }, [presets, filters]);
 
-    // Efeito para pré-carregar os dados do gráfico da melhor recomendação
+    // Efeito para pré-carregar os dados do gráfico (usa a lista filtrada)
     useEffect(() => {
-        if (recommendations && recommendations.length > 0 && recommendations[0]?.ranked_spots?.length > 0) {
-            const topSpot = recommendations[0].ranked_spots[0];
+        if (futureRecommendations && futureRecommendations.length > 0 && futureRecommendations[0]?.ranked_spots?.length > 0) {
+            const topSpot = futureRecommendations[0].ranked_spots[0];
             if (topSpot) {
                 queryClient.prefetchQuery({
                     queryKey: ['forecast', topSpot.spot_id],
@@ -44,7 +62,7 @@ const RecommendationsPage: React.FC = () => {
                 });
             }
         }
-    }, [recommendations, queryClient]);
+    }, [futureRecommendations, queryClient]);
 
     const handleSearch = (request: RecommendationRequest) => {
         const matchingPreset = presets?.find(p => 
@@ -73,8 +91,9 @@ const RecommendationsPage: React.FC = () => {
             />
             
             <div className="mt-8">
+                {/* Usa a nova variável com os dados já filtrados */}
                 <RecommendationView 
-                    dailyRecommendations={recommendations as DailyRecommendation[] || []}
+                    dailyRecommendations={futureRecommendations}
                     loading={isRecommendationLoading}
                     error={error}
                 />

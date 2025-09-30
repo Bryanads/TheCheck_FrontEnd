@@ -22,7 +22,7 @@ export interface Profile {
   email: string;
   location?: string;
   bio?: string;
-  surf_level?: 'iniciante' | 'intermediario' | 'avancado';
+  surf_level?: 'iniciante' | 'intermediario' | 'maroleiro' | 'pro';
   stance?: 'regular' | 'goofy';
 }
 
@@ -30,7 +30,7 @@ export interface ProfileUpdate {
   name?: string;
   location?: string;
   bio?: string;
-  surf_level?: 'iniciante' | 'intermediario' | 'avancado';
+  surf_level?: 'iniciante' | 'intermediario' | 'maroleiro' | 'pro';
   stance?: 'regular' | 'goofy';
 }
 

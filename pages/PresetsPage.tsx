@@ -1,5 +1,4 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-56043ed899e9911f49213e6ecb22787e09848d37/pages/PresetsPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { usePresets, useSpots, useCreatePreset, useUpdatePreset, useDeletePreset } from '../hooks';
 import { Preset, Spot, PresetCreate, PresetUpdate } from '../types';
 import { CogsIcon, PlusIcon, TrashIcon, EditIcon } from '../components/icons';
@@ -7,7 +6,7 @@ import { toUTCTime, toLocalTime } from '../utils/utils';
 
 const MAX_DAY_OFFSET = 6;
 
-// --- Componente de Formulário Atualizado ---
+// --- Componente de Formulário ---
 const PresetForm: React.FC<{
     currentPreset: Partial<Preset> | null;
     spots: Spot[];
@@ -21,7 +20,6 @@ const PresetForm: React.FC<{
     const [daySelectionType, setDaySelectionType] = useState<'offsets' | 'weekdays'>(currentPreset?.day_selection_type || 'offsets');
     const [daySelectionValues, setDaySelectionValues] = useState<number[]>(currentPreset?.day_selection_values || [0]);
     const [isDefault, setIsDefault] = useState(currentPreset?.is_default || false);
-
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +29,6 @@ const PresetForm: React.FC<{
     
     const handleDayTypeChange = (type: 'offsets' | 'weekdays') => {
         setDaySelectionType(type);
-        // Reseta os valores ao trocar de tipo para evitar inconsistências
         setDaySelectionValues(type === 'offsets' ? [0] : []);
     };
 
@@ -50,7 +47,6 @@ const PresetForm: React.FC<{
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-
         if (!name.trim()) { setError("O nome do preset é obrigatório."); return; }
         if (selectedSpotIds.length === 0) { setError("Selecione pelo menos um spot."); return; }
         if (daySelectionValues.length === 0) { setError("Selecione pelo menos um dia."); return; }
@@ -82,7 +78,6 @@ const PresetForm: React.FC<{
                 <h3 className="text-2xl font-bold mb-4">{currentPreset?.preset_id ? 'Editar' : 'Criar'} Preset</h3>
                 {error && <p className="bg-red-500/20 text-red-300 p-3 rounded-lg mb-4 text-center">{error}</p>}
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Campos do formulário: Nome, Spots, Horários */}
                     <input type="text" placeholder="Nome do Preset" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" required />
                     <div>
                         <label className="block text-slate-300 font-medium mb-2">Spots</label>
@@ -94,8 +89,6 @@ const PresetForm: React.FC<{
                         ))}
                         </div>
                     </div>
-
-                    {/* Lógica de seleção de dias */}
                     <div>
                         <label className="block text-slate-300 font-medium mb-2">Dias para o Check</label>
                         <div className="flex bg-slate-700 rounded-lg p-1">
@@ -118,8 +111,6 @@ const PresetForm: React.FC<{
                             )}
                         </div>
                     </div>
-                    
-                    {/* Horários e Default Switch */}
                     <div>
                         <label className="block text-slate-300 font-medium mb-2">Intervalo de Horas (Local)</label>
                         <div className="flex items-center space-x-4">
@@ -132,7 +123,6 @@ const PresetForm: React.FC<{
                         <label htmlFor="is_default" className="text-slate-300 font-medium">Tornar este o preset padrão?</label>
                         <input type="checkbox" id="is_default" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} className="w-5 h-5 rounded text-cyan-500 bg-slate-600 border-slate-500 focus:ring-cyan-600"/>
                     </div>
-
                     <div className="flex justify-end space-x-4 pt-4">
                         <button type="button" onClick={onClose} className="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg" disabled={isSaving}>Cancelar</button>
                         <button type="submit" className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg" disabled={isSaving}>{isSaving ? 'Salvando...' : 'Salvar'}</button>
@@ -154,6 +144,12 @@ const PresetsPage: React.FC = () => {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [currentPreset, setCurrentPreset] = useState<Partial<Preset> | null>(null);
 
+    // LÓGICA PARA ENCONTRAR O PRESET INICIAL (COM MENOR ID)
+    const initialPresetId = useMemo(() => {
+        if (!presets || presets.length === 0) return null;
+        return Math.min(...presets.map(p => p.preset_id));
+    }, [presets]);
+
     const handleSave = async (presetData: PresetCreate | PresetUpdate, presetId?: number) => {
         if (presetId) {
             await updatePreset({ presetId, updates: presetData });
@@ -172,15 +168,12 @@ const PresetsPage: React.FC = () => {
     
     const handleSetDefault = async (preset: Preset) => {
         if(preset.is_default) return;
-
         const currentDefault = presets?.find(p => p.is_default);
-        
         const promises = [];
         if(currentDefault) {
             promises.push(updatePreset({ presetId: currentDefault.preset_id, updates: { is_default: false } }));
         }
         promises.push(updatePreset({ presetId: preset.preset_id, updates: { is_default: true } }));
-
         await Promise.all(promises);
         refetch();
     };
@@ -196,21 +189,33 @@ const PresetsPage: React.FC = () => {
                 </button>
             </div>
             <div className="space-y-4">
-                {presets?.map(preset => (
-                    <div key={preset.preset_id} className="bg-slate-800 rounded-lg p-4 flex justify-between items-center shadow-md">
-                        <div>
-                            <h3 className="text-xl font-bold text-white">{preset.name}</h3>
-                            <p className="text-slate-400 text-sm">
-                                {preset.spot_ids.map(id => spots?.find(s => s.spot_id === id)?.name).join(', ')}
-                            </p>
+                {presets?.map(preset => {
+                    const isInitialPreset = preset.preset_id === initialPresetId;
+                    return (
+                        <div key={preset.preset_id} className="bg-slate-800 rounded-lg p-4 flex justify-between items-center shadow-md">
+                            <div>
+                                <h3 className="text-xl font-bold text-white">{preset.name}</h3>
+                                <p className="text-slate-400 text-sm">
+                                    {preset.spot_ids.map(id => spots?.find(s => s.spot_id === id)?.name).join(', ')}
+                                </p>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                                <button onClick={() => handleSetDefault(preset)} disabled={preset.is_default} className="text-sm font-semibold disabled:text-yellow-400 text-slate-400 hover:text-yellow-400 disabled:cursor-not-allowed">{preset.is_default ? 'Padrão' : 'Tornar Padrão'}</button>
+                                <button onClick={() => { setCurrentPreset(preset); setIsFormOpen(true); }} className="p-2 text-slate-400 hover:text-white"><EditIcon/></button>
+                                
+                                {/* BOTÃO DE DELETAR COM A TRAVA */}
+                                <button 
+                                    onClick={() => handleDelete(preset.preset_id)} 
+                                    disabled={isInitialPreset}
+                                    className="p-2 text-slate-400 hover:text-red-500 disabled:text-slate-600 disabled:cursor-not-allowed"
+                                    title={isInitialPreset ? "O preset inicial não pode ser apagado." : "Deletar preset"}
+                                >
+                                    <TrashIcon/>
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex items-center space-x-4">
-                             <button onClick={() => handleSetDefault(preset)} disabled={preset.is_default} className="text-sm font-semibold disabled:text-yellow-400 text-slate-400 hover:text-yellow-400 disabled:cursor-not-allowed">{preset.is_default ? 'Padrão' : 'Tornar Padrão'}</button>
-                            <button onClick={() => { setCurrentPreset(preset); setIsFormOpen(true); }} className="p-2 text-slate-400 hover:text-white"><EditIcon/></button>
-                            <button onClick={() => handleDelete(preset.preset_id)} className="p-2 text-slate-400 hover:text-red-500"><TrashIcon/></button>
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
             {isFormOpen && (
                 <PresetForm

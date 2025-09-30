@@ -1,14 +1,12 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-1727b3a4122cab389de3a8341a5c0d2dc93cbca5/pages/OnboardingPage.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUpdateProfile, useSpots, useUpdateSpotPreferences, useCreatePreset } from '../hooks';
+import { useUpdateProfile, useSpots, useUpdateSpotPreferences, useCreatePreset, useSpotPreferences } from '../hooks';
 import { ProfileUpdate, Spot, PreferenceUpdate, PresetCreate } from '../types';
 import { OnboardingLayout } from '../components/layout/OnboardingLayout';
 import { PreferenceFormSections } from '../components/preferences/PreferenceFormFields';
-import { toLocalTime, toUTCTime } from '../utils/utils';
+import { toUTCTime } from '../utils/utils';
 
-// --- Sub-componentes para cada passo ---
-
+// --- Sub-componente ProfileStep (sem alterações) ---
 const ProfileStep: React.FC<{ onComplete: (data: ProfileUpdate) => void }> = ({ onComplete }) => {
     const [profile, setProfile] = useState<ProfileUpdate>({ surf_level: 'intermediario', stance: 'regular' });
     const { mutateAsync: updateProfile, isPending } = useUpdateProfile();
@@ -30,7 +28,8 @@ const ProfileStep: React.FC<{ onComplete: (data: ProfileUpdate) => void }> = ({ 
                 <select name="surf_level" id="surf_level" value={profile.surf_level} onChange={handleChange} className="mt-1 w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg">
                     <option value="iniciante">Iniciante</option>
                     <option value="intermediario">Intermediário</option>
-                    <option value="avancado">Avançado</option>
+                    <option value="maroleiro">Maroleiro</option>
+                    <option value="pro">Pro</option>
                 </select>
             </div>
             <div>
@@ -47,6 +46,7 @@ const ProfileStep: React.FC<{ onComplete: (data: ProfileUpdate) => void }> = ({ 
     );
 };
 
+// --- Sub-componente SpotsStep ---
 const SpotsStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     const { data: spots, isLoading } = useSpots();
     const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
@@ -59,7 +59,7 @@ const SpotsStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
 
     return (
         <div className="space-y-6">
-            <p className="text-center text-slate-300">Agora, configure suas preferências para os spots que você mais surfa. Isso nos ajuda a dar as melhores recomendações.</p>
+            <p className="text-center text-slate-300">Agora, se quiser, ajuste suas preferências para os spots que você mais surfa. Isso ajuda a dar as melhores recomendações.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto p-2 bg-slate-900/50 rounded-lg">
                 {spots?.map(spot => (
                     <button key={spot.spot_id} onClick={() => setSelectedSpot(spot)} className="text-left p-3 rounded-md bg-slate-700 hover:bg-slate-600">
@@ -74,9 +74,24 @@ const SpotsStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     );
 };
 
+// --- Sub-componente SpotPreferencesForm ---
 const SpotPreferencesForm: React.FC<{ spot: Spot; onBack: () => void }> = ({ spot, onBack }) => {
-    const { mutateAsync: updatePreferences, isPending } = useUpdateSpotPreferences();
-    const [preferences, setPreferences] = useState<Partial<PreferenceUpdate>>({ is_active: true });
+    const { mutateAsync: updatePreferences, isPending: isSubmitting } = useUpdateSpotPreferences();
+    const { data: initialPreferences, isLoading: isLoadingPrefs } = useSpotPreferences(spot.spot_id);
+    const [preferences, setPreferences] = useState<Partial<PreferenceUpdate>>({});
+
+    useEffect(() => {
+        if (initialPreferences) {
+            setPreferences({
+                ideal_swell_height: initialPreferences.ideal_swell_height,
+                max_swell_height: initialPreferences.max_swell_height,
+                max_wind_speed: initialPreferences.max_wind_speed,
+                ideal_water_temperature: initialPreferences.ideal_water_temperature,
+                ideal_air_temperature: initialPreferences.ideal_air_temperature,
+                is_active: true,
+            });
+        }
+    }, [initialPreferences]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
@@ -84,75 +99,66 @@ const SpotPreferencesForm: React.FC<{ spot: Spot; onBack: () => void }> = ({ spo
     };
 
     const handleSave = async () => {
+        if (Object.values(preferences).some(v => v === undefined || isNaN(v as number))) {
+            return;
+        }
         await updatePreferences({ spotId: spot.spot_id, updates: preferences });
         onBack();
     };
+    
+    if (isLoadingPrefs) {
+        return (
+            <div className="flex justify-center items-center p-10">
+                <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
          <div className="space-y-4">
             <h3 className="text-xl text-center font-bold text-cyan-400">{spot.name}</h3>
+            <p className="text-sm text-center text-slate-400">Ajuste os valores padrão ou salve como estão.</p>
             <PreferenceFormSections preferences={preferences} handleChange={handleChange} />
-            <div className="flex gap-4">
+            <div className="flex gap-4 pt-4">
                  <button onClick={onBack} className="w-full bg-slate-600 text-white font-bold py-2 rounded-lg hover:bg-slate-500">
                     Voltar
                 </button>
-                <button onClick={handleSave} disabled={isPending} className="w-full bg-cyan-500 text-white font-bold py-2 rounded-lg hover:bg-cyan-600 disabled:bg-slate-600">
-                    {isPending ? 'Salvando...' : 'Salvar e Fechar'}
+                <button onClick={handleSave} disabled={isSubmitting} className="w-full bg-cyan-500 text-white font-bold py-2 rounded-lg hover:bg-cyan-600 disabled:bg-slate-600">
+                    {isSubmitting ? 'Salvando...' : 'Salvar e Fechar'}
                 </button>
             </div>
         </div>
     );
 };
 
-// --- NOVO PRESET STEP COMPLETO ---
-const MAX_DAY_OFFSET = 6;
-
+// --- *** VERSÃO CORRETA E SIMPLIFICADA DO PRESETSTEP *** ---
 const PresetStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     const { data: spots } = useSpots();
     const { mutateAsync: createPreset, isPending } = useCreatePreset();
 
-    const [name, setName] = useState('Meu Primeiro Preset');
+    const [name, setName] = useState('Meu Check Rápido');
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>([]);
-    const [startTime, setStartTime] = useState('08:00');
-    const [endTime, setEndTime] = useState('20:00');
-    const [daySelectionType, setDaySelectionType] = useState<'offsets' | 'weekdays'>('offsets');
-    const [daySelectionValues, setDaySelectionValues] = useState<number[]>([0, 1, 2]);
+    const [startTime, setStartTime] = useState('06:00');
+    const [endTime, setEndTime] = useState('18:00');
     const [error, setError] = useState<string | null>(null);
 
     const handleSpotToggle = (spotId: number) => {
         setSelectedSpotIds(prev => prev.includes(spotId) ? prev.filter(id => id !== spotId) : [...prev, spotId]);
-    };
-    
-    const handleDayTypeChange = (type: 'offsets' | 'weekdays') => {
-        setDaySelectionType(type);
-        setDaySelectionValues(type === 'offsets' ? [0] : []);
-    };
-
-    const handleOffsetChange = (newOffset: number) => {
-        const offset = Math.max(0, Math.min(newOffset, MAX_DAY_OFFSET));
-        const newValues = Array.from({ length: offset + 1 }, (_, i) => i);
-        setDaySelectionValues(newValues);
-    };
-
-    const handleWeekdayToggle = (dayIndex: number) => {
-        setDaySelectionValues(prev =>
-            prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]
-        );
     };
 
     const handleFinalize = async () => {
         setError(null);
         if (!name.trim()) { setError("O nome do preset é obrigatório."); return; }
         if (selectedSpotIds.length === 0) { setError("Selecione pelo menos um spot."); return; }
-        if (daySelectionValues.length === 0) { setError("Selecione pelo menos um dia."); return; }
 
         const presetData: PresetCreate = {
             name,
             spot_ids: selectedSpotIds,
             start_time: toUTCTime(startTime),
             end_time: toUTCTime(endTime),
-            day_selection_type: daySelectionType,
-            day_selection_values: daySelectionValues,
+            // Lógica travada: Sempre buscará recomendações para hoje e amanhã.
+            day_selection_type: 'offsets',
+            day_selection_values: [0, 1], 
             is_default: true,
         };
         await createPreset(presetData);
@@ -160,14 +166,14 @@ const PresetStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     };
     
     return (
-        <div className="space-y-4">
-            <p className="text-center text-slate-300">Para finalizar, crie seu primeiro "Preset". É um filtro salvo para checar rapidamente suas ondas.</p>
+        <div className="space-y-6">
+            <p className="text-center text-slate-300">Para finalizar, crie seu primeiro "Check Rápido". É um filtro salvo para checar as ondas nas próximas 24h.</p>
             {error && <p className="bg-red-500/20 text-red-300 p-3 rounded-lg text-center">{error}</p>}
             
             <input type="text" placeholder="Nome do Preset" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500" required />
             
             <div>
-                <label className="block text-slate-300 font-medium mb-2">Spots</label>
+                <label className="block text-slate-300 font-medium mb-2">Selecione os Spots</label>
                 <div className="max-h-32 overflow-y-auto bg-slate-700 p-2 rounded-lg grid grid-cols-2 gap-2">
                 {spots?.map(spot => (
                     <button key={spot.spot_id} type="button" onClick={() => handleSpotToggle(spot.spot_id)} className={`w-full text-left p-2 rounded-md transition-colors ${selectedSpotIds.includes(spot.spot_id) ? 'bg-cyan-500 text-white font-bold' : 'hover:bg-slate-600'}`}>
@@ -176,32 +182,9 @@ const PresetStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
                 ))}
                 </div>
             </div>
-
-            <div>
-                <label className="block text-slate-300 font-medium mb-2">Dias para o Check</label>
-                <div className="flex bg-slate-700 rounded-lg p-1">
-                    <button type="button" onClick={() => handleDayTypeChange('offsets')} className={`flex-1 p-2 rounded-md font-semibold text-sm transition ${daySelectionType === 'offsets' ? 'bg-cyan-500 text-slate-900' : 'text-slate-300'}`}>A partir de Hoje</button>
-                    <button type="button" onClick={() => handleDayTypeChange('weekdays')} className={`flex-1 p-2 rounded-md font-semibold text-sm transition ${daySelectionType === 'weekdays' ? 'bg-cyan-500 text-slate-900' : 'text-slate-300'}`}>Dias da Semana</button>
-                </div>
-                <div className="mt-2">
-                    {daySelectionType === 'offsets' ? (
-                        <div className="flex items-center justify-center space-x-4 bg-slate-700 p-2 rounded-lg">
-                            <button type="button" onClick={() => handleOffsetChange(daySelectionValues.length - 2)} className="bg-slate-600 w-8 h-8 rounded-full font-bold">-</button>
-                            <span className="font-bold w-24 text-center">{daySelectionValues.length} dia(s)</span>
-                            <button type="button" onClick={() => handleOffsetChange(daySelectionValues.length)} className="bg-slate-600 w-8 h-8 rounded-full font-bold">+</button>
-                        </div>
-                    ) : (
-                        <div className="flex justify-between items-center space-x-1">
-                            {['D','S','T','Q','Q','S','S'].map((day, index) => (
-                                <button key={index} type="button" onClick={() => handleWeekdayToggle(index)} className={`w-10 h-10 rounded-full font-bold transition-colors ${daySelectionValues.includes(index) ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300'}`}>{day}</button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
             
             <div>
-                <label className="block text-slate-300 font-medium mb-2">Intervalo de Horas (Local)</label>
+                <label className="block text-slate-300 font-medium mb-2">Seu Horário de Surf (Local)</label>
                 <div className="flex items-center space-x-4">
                     <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg"/>
                     <span className="text-slate-400">até</span>
@@ -216,9 +199,7 @@ const PresetStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     );
 };
 
-
-// --- Componente Principal da Página ---
-
+// --- Componente Principal da Página (sem alterações) ---
 const OnboardingPage: React.FC = () => {
     const [step, setStep] = useState(1);
     const navigate = useNavigate();
