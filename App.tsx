@@ -1,4 +1,4 @@
-// bryanads/thecheck_frontend/TheCheck_Front_End-5b38d66e392d06920c176ae34523f3250cf17f28/App.tsx
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-e93994004b280699b807c2c45d829a3f6feda313/App.tsx
 import React from 'react';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
@@ -15,8 +15,9 @@ import ForecastPage from './pages/ForecastsPage';
 import OnboardingPage from './pages/OnboardingPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import UpdatePasswordPage from './pages/UpdatePasswordPage';
-import SettingsPage from './pages/SettingsPage'; // 1. Importe a nova página
+import SettingsPage from './pages/SettingsPage';
 import { BottomNavBar } from './components/layout/BottomNavBar';
+import ReloadPrompt from './ReloadPrompt'; // 1. Importe o novo componente
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
@@ -40,21 +41,14 @@ const App: React.FC = () => {
             <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8 content-wrapper">
                 <Routes>
                     <Route path="/" element={isAuthenticated ? <Navigate to="/recommendations" /> : <HomePage />} />
-
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/update-password" element={<UpdatePasswordPage />} />
                     <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
-
-                    {/* --- ROTAS ATUALIZADAS AQUI --- */}
                     <Route path="/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
                     <Route path="/forecasts" element={<ProtectedRoute><ForecastPage /></ProtectedRoute>} />
                     <Route path="/forecasts/:spotId" element={<ProtectedRoute><ForecastPage /></ProtectedRoute>} />
-
-                    {/* A nova página Hub de Ajustes */}
                     <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-
-                    {/* As páginas de configuração que agora são "filhas" de Ajustes */}
                     <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                     <Route path="/presets" element={<ProtectedRoute><PresetsPage /></ProtectedRoute>} />
                     <Route path="/spots" element={<ProtectedRoute><SpotsPage /></ProtectedRoute>} />
@@ -63,6 +57,9 @@ const App: React.FC = () => {
             </main>
 
             {showNav && <BottomNavBar />}
+
+            {/* 2. Adicione o componente aqui */}
+            <ReloadPrompt />
         </div>
     );
 };
