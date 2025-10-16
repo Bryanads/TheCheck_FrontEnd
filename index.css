@@ -23,3 +23,13 @@ input[type="password"]::-webkit-password-reveal-button {
     -webkit-appearance: none;
     appearance: none;
 }
+
+body {
+  /* Define a altura da barra de navegação como uma variável CSS */
+  --navbar-height: 6rem; /* Corresponde a h-20 no Tailwind */
+}
+
+/* Nova classe para o contêiner de conteúdo principal */
+.content-wrapper {
+  padding-bottom: var(--navbar-height);
+}

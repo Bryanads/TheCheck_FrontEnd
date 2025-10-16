@@ -1,9 +1,10 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-a52b3568a35c7807a1797de0fa3a908a8d5dfe5c/components/recommendation/RecommendationView.tsx
+// src/components/recommendation/RecommendationView.tsx
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom'; // 1. Importar o Link
+import { Link } from 'react-router-dom';
 import { DailyRecommendation, SpotDailySummary } from '../../types';
 import { degreesToCardinal } from '../../utils/utils';
 import { WaveIcon, WindIcon, ChartBarIcon, ChevronDownIcon } from '../icons';
+import { ScoreGauge } from './ScoreGauge'; 
 
 // Componente para o resumo expandido que aparece ao clicar
 const ExpandedDetails: React.FC<{ spot: SpotDailySummary }> = ({ spot }) => {
@@ -22,9 +23,8 @@ const ExpandedDetails: React.FC<{ spot: SpotDailySummary }> = ({ spot }) => {
                 <span className="flex items-center text-slate-300"><ChartBarIcon className="w-4 h-4 mr-2 text-cyan-400"/> Maré</span>
                 <span className="text-slate-200">{cond.sea_level_sg?.toFixed(2)}m ({cond.tide_type}) <span className="font-bold text-white">({scores.tide_score.toFixed(0)})</span></span>
             </div>
-             {/* 2. Adicionar o link para a previsão completa */}
             <div className="text-right mt-3">
-                <Link 
+                <Link
                     to={`/forecasts/${spot.spot_id}`}
                     state={{ highlightedTimestamp: spot.best_hour_utc }}
                     className="text-cyan-400 hover:text-cyan-300 font-semibold text-xs"
@@ -39,20 +39,13 @@ const ExpandedDetails: React.FC<{ spot: SpotDailySummary }> = ({ spot }) => {
 // Componente para a linha clicável de cada pico
 const SpotRow: React.FC<{ spot: SpotDailySummary }> = ({ spot }) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    
-    const getRatingDetails = (score: number) => {
-        if (score > 80) return { text: 'Ótimo', color: 'text-cyan-400' };
-        if (score > 65) return { text: 'Bom', color: 'text-green-400' };
-        if (score > 40) return { text: 'Surfável', color: 'text-yellow-500' };
-        return { text: 'Ruim', color: 'text-red-500' };
-    };
 
-    const rating = getRatingDetails(spot.best_overall_score);
+    // 2. A função getRatingDetails e a variável 'rating' não são mais necessárias
     const bestTime = new Date(spot.best_hour_utc).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     return (
         <div>
-            <div 
+            <div
                 onClick={() => setIsExpanded(!isExpanded)}
                 className={`flex justify-between items-center p-4 bg-slate-800 hover:bg-slate-700/60 cursor-pointer transition-colors ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'}`}
             >
@@ -62,7 +55,10 @@ const SpotRow: React.FC<{ spot: SpotDailySummary }> = ({ spot }) => {
                 </div>
                 <div className="flex items-center space-x-4">
                     <span className="text-sm text-slate-300">{bestTime}</span>
-                    <span className={`font-bold ${rating.color}`}>{rating.text}</span>
+                    {/* 3. Substitua o texto pelo ScoreGauge, controlando o tamanho aqui */}
+                    <div className="w-12 h-12">
+                        <ScoreGauge score={spot.best_overall_score} />
+                    </div>
                 </div>
             </div>
             {isExpanded && <ExpandedDetails spot={spot} />}

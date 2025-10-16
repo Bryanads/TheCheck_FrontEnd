@@ -96,7 +96,7 @@ export interface DailyForecast {
 export interface SpotForecast {
   spot_id: number;
   spot_name: string;
-  forecasts: HourlyForecast[]; 
+  forecasts: HourlyForecast[];
 }
 
 export interface RecommendationRequest {
@@ -109,6 +109,7 @@ export interface RecommendationRequest {
     start: string; // "HH:MM:SS"
     end: string;   // "HH:MM:SS"
   };
+  cache_key?: string;
   limit?: number;
 }
 

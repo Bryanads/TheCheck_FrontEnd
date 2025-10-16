@@ -1,98 +1,114 @@
-// bryanads/thecheck_frontend/TheCheck_FrontEnd-99e2816aadc115d87eae7a22675f6dd24cc0b9d9/pages/RecommendationsPage.tsx
+// src/pages/RecommendationsPage.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePresets, useSpots, useRecommendations } from '../hooks';
+import { usePresets, useRecommendations } from '../hooks';
 import * as api from '../services/api';
-import { RecommendationRequest, DailyRecommendation } from '../types';
-import { RecommendationFilter } from '../components/recommendation/RecommendationFilter';
+import { RecommendationRequest, SpotDailySummary } from '../types';
 import { RecommendationView } from '../components/recommendation/RecommendationView';
+import { DashboardHighlight } from '../components/recommendation/DashboardHighlight';
+import { QuickFilters, QuickFilterOption } from '../components/recommendation/QuickFilters';
 
 const RecommendationsPage: React.FC = () => {
     const queryClient = useQueryClient();
-    const { data: spots, isLoading: isLoadingSpots } = useSpots();
     const { data: presets, isLoading: isLoadingPresets } = usePresets();
 
+    // Encontra o preset padrão do usuário de forma segura
+    const defaultPreset = useMemo(() => presets?.find(p => p.is_default) || presets?.[0], [presets]);
+
+    const [activeQuickFilter, setActiveQuickFilter] = useState<QuickFilterOption>('today');
     const [filters, setFilters] = useState<RecommendationRequest | null>(null);
-    const [activePresetName, setActivePresetName] = useState<string | null>(null);
 
-    const recommendationRequest = useMemo(() => filters, [filters]);
-    const { data: recommendations, isFetching: isRecommendationLoading, error } = useRecommendations(recommendationRequest);
+    const { data: recommendations, isFetching: isRecommendationLoading, error } = useRecommendations(filters);
 
-    // *** LÓGICA DE FILTRO NO FRONTEND ***
-    const futureRecommendations = useMemo(() => {
-        if (!recommendations) return [];
-
-        const now = new Date();
-
-        // 1. Filtra os spots de cada dia para remover os que já passaram
-        const filteredDays = recommendations.map(day => {
-            const futureSpots = day.ranked_spots.filter(spot => new Date(spot.best_hour_utc) > now);
-            return { ...day, ranked_spots: futureSpots };
-        });
-
-        // 2. Filtra os dias que ficaram sem nenhum spot após a limpeza
-        return filteredDays.filter(day => day.ranked_spots.length > 0);
-
-    }, [recommendations]);
-
-
-    // Efeito para carregar o preset padrão na primeira vez
     useEffect(() => {
-        if (presets && presets.length > 0 && !filters) {
-            const defaultPreset = presets.find(p => p.is_default) || presets[0];
-            if (defaultPreset) {
-                setActivePresetName(defaultPreset.name);
-                setFilters({
+        // Só monta a requisição se o preset padrão já foi carregado
+        if (defaultPreset) {
+            let request: RecommendationRequest;
+            const filterKey = activeQuickFilter;
+
+            // Para 'Hoje' e 'Amanhã', a requisição é super simples, focada no cache.
+            // A API vai inferir o resto, mas enviamos dados mínimos para consistência.
+            if (filterKey === 'today' || filterKey === 'tomorrow') {
+                request = {
+                    cache_key: filterKey,
+                    // Dados mínimos para o schema (não serão usados se o cache funcionar)
+                    spot_ids: defaultPreset.spot_ids,
+                    day_selection: { type: 'offsets', values: filterKey === 'today' ? [0] : [1] },
+                    time_window: { start: defaultPreset.start_time, end: defaultPreset.end_time },
+                };
+            } else {
+                // Para o preset padrão, enviamos a requisição completa.
+                // Isso permite que a API use o cache (se a chave bater) ou calcule em tempo real como fallback.
+                request = {
+                    cache_key: defaultPreset.name,
                     spot_ids: defaultPreset.spot_ids,
                     day_selection: { type: defaultPreset.day_selection_type, values: defaultPreset.day_selection_values },
                     time_window: { start: defaultPreset.start_time, end: defaultPreset.end_time },
-                });
+                };
             }
-        }
-    }, [presets, filters]);
 
-    // Efeito para pré-carregar os dados do gráfico (usa a lista filtrada)
+            setFilters(request);
+        }
+    }, [defaultPreset, activeQuickFilter]); // Roda sempre que o preset ou o filtro ativo mudar
+
+    const { topRecommendation, futureRecommendations } = useMemo(() => {
+        if (!recommendations) return { topRecommendation: null, futureRecommendations: [] };
+
+        const now_utc_timestamp = Date.now();
+        let topRec: SpotDailySummary | null = null;
+
+        const filteredDays = recommendations.map(day => {
+            let spotsForDay = day.ranked_spots;
+
+            // Aplica o filtro de tempo apenas para dias futuros, não para "Hoje"
+            if (activeQuickFilter !== 'today') {
+                spotsForDay = day.ranked_spots.filter(spot => new Date(spot.best_hour_utc).getTime() > now_utc_timestamp);
+            }
+
+            // A lógica para o card de destaque ainda tenta priorizar a melhor onda futura
+            const futureSpotsForTopRec = day.ranked_spots.filter(spot => new Date(spot.best_hour_utc).getTime() > now_utc_timestamp);
+            if (futureSpotsForTopRec.length > 0) {
+                if (!topRec || futureSpotsForTopRec[0].best_overall_score > topRec.best_overall_score) {
+                    topRec = futureSpotsForTopRec[0];
+                }
+            }
+
+            return { ...day, ranked_spots: spotsForDay };
+        }).filter(day => day.ranked_spots.length > 0);
+
+        // Se nenhuma onda futura foi encontrada, exibe a melhor de hoje no card, mesmo que já tenha passado
+        if (!topRec && filteredDays.length > 0 && filteredDays[0].ranked_spots.length > 0) {
+            topRec = filteredDays[0].ranked_spots[0];
+        }
+
+        return { topRecommendation: topRec, futureRecommendations: filteredDays };
+    }, [recommendations, activeQuickFilter]);
+
+    // Efeito para pré-carregar os dados do gráfico para a melhor recomendação
     useEffect(() => {
-        if (futureRecommendations && futureRecommendations.length > 0 && futureRecommendations[0]?.ranked_spots?.length > 0) {
-            const topSpot = futureRecommendations[0].ranked_spots[0];
-            if (topSpot) {
-                queryClient.prefetchQuery({
-                    queryKey: ['forecast', topSpot.spot_id],
-                    queryFn: () => api.getSpotForecast(topSpot.spot_id),
-                });
-            }
+        if (topRecommendation) {
+            queryClient.prefetchQuery({
+                queryKey: ['forecast', topRecommendation.spot_id],
+                queryFn: () => api.getSpotForecast(topRecommendation.spot_id),
+            });
         }
-    }, [futureRecommendations, queryClient]);
+    }, [topRecommendation, queryClient]);
 
-    const handleSearch = (request: RecommendationRequest) => {
-        const matchingPreset = presets?.find(p => 
-            p.start_time === request.time_window.start &&
-            p.end_time === request.time_window.end &&
-            p.day_selection_type === request.day_selection.type &&
-            JSON.stringify(p.spot_ids.sort()) === JSON.stringify(request.spot_ids.sort()) &&
-            JSON.stringify(p.day_selection_values.sort()) === JSON.stringify(request.day_selection.values.sort())
-        );
-        setActivePresetName(matchingPreset ? matchingPreset.name : 'Custom Filter');
-        setFilters(request);
-    };
-
-    if (isLoadingSpots || isLoadingPresets) {
+    if (isLoadingPresets) {
         return <div className="text-center p-10"><div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div></div>;
     }
 
     return (
         <div className="space-y-8">
-            <RecommendationFilter 
-                spots={spots || []} 
-                presets={presets || []} 
-                onSearch={handleSearch} 
-                loading={isRecommendationLoading} 
-                activePresetName={activePresetName} 
+            <DashboardHighlight topRecommendation={topRecommendation} />
+            <QuickFilters
+                activeFilter={activeQuickFilter}
+                onFilterChange={setActiveQuickFilter}
+                defaultPresetName={defaultPreset?.name || null}
+                loading={isRecommendationLoading}
             />
-            
             <div className="mt-8">
-                {/* Usa a nova variável com os dados já filtrados */}
-                <RecommendationView 
+                <RecommendationView
                     dailyRecommendations={futureRecommendations}
                     loading={isRecommendationLoading}
                     error={error}

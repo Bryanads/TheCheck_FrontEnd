@@ -1,20 +1,23 @@
+// src/components/recommendation/ScoreGauge.tsx
 import React from 'react';
 import { ResponsiveContainer, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 
 interface ScoreGaugeProps {
     score: number;
+    className?: string;
 }
 
-export const ScoreGauge: React.FC<ScoreGaugeProps> = ({ score }) => {
+export const ScoreGauge: React.FC<ScoreGaugeProps> = ({ score, className }) => {
     const getScoreColor = (s: number) => {
-        if (s > 75) return '#22c55e'; // green-500
-        if (s > 50) return '#eab308'; // yellow-500
-        return '#ef4444'; // red-500
+        if (s > 80) return '#22d3ee'; // text-cyan-400 for 'Ótimo'
+        if (s > 65) return '#4ade80'; // text-green-400 for 'Bom'
+        if (s > 40) return '#eab308'; // text-yellow-500 for 'Surfável'
+        return '#f87171'; // text-red-400 for 'Ruim'
     };
     const data = [{ name: 'score', value: score }];
 
     return (
-        <div className="w-24 h-24 relative">
+        <div className={`w-full h-full relative ${className}`}>
             <ResponsiveContainer width="100%" height="100%">
                 <RadialBarChart
                     innerRadius="70%"
@@ -25,7 +28,7 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({ score }) => {
                 >
                     <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
                     <RadialBar
-                        background
+                        background={{ fill: 'rgba(255, 255, 255, 0.05)' }}
                         dataKey="value"
                         cornerRadius={10}
                         fill={getScoreColor(score)}
@@ -33,7 +36,7 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({ score }) => {
                 </RadialBarChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold" style={{color: getScoreColor(score)}}>{Math.round(score)}</span>
+                <span className="text-lg font-bold" style={{color: getScoreColor(score)}}>{Math.round(score)}</span>
             </div>
         </div>
     );
