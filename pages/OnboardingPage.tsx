@@ -1,8 +1,9 @@
-// src/pages/OnboardingPage.tsx
-import React, { useState } from 'react'; // LINHA CORRIGIDA
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-70d5044f5e0f688356f30139a56fecb4fa483931/pages/OnboardingPage.tsx
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSpots, useCreatePreset } from '../hooks';
-import { toUTCTime } from '../utils/utils';
+// ATUALIZADO: Importa formatLocalTimeForAPI em vez de toUTCTime
+import { formatLocalTimeForAPI } from '../utils/utils';
 import { PresetCreate } from '../types';
 import { LogoIcon } from '../components/icons';
 
@@ -32,8 +33,9 @@ const OnboardingPage: React.FC = () => {
         const presetData: PresetCreate = {
             name: 'Meu Check Padrão',
             spot_ids: selectedSpotIds,
-            start_time: toUTCTime(startTime),
-            end_time: toUTCTime(endTime),
+            // ATUALIZADO: Usa formatLocalTimeForAPI
+            start_time: formatLocalTimeForAPI(startTime),
+            end_time: formatLocalTimeForAPI(endTime),
             day_selection_type: 'offsets',
             day_selection_values: [0, 1], // Sempre "Hoje" e "Amanhã" por padrão
             is_default: true,
@@ -44,6 +46,7 @@ const OnboardingPage: React.FC = () => {
             navigate('/recommendations');
         } catch (err) {
             setError("Ocorreu um erro ao salvar suas preferências. Tente novamente.");
+            console.error("Erro ao criar preset no onboarding:", err); // Log para debug
         }
     };
 
@@ -64,6 +67,7 @@ const OnboardingPage: React.FC = () => {
                                 {spots?.map(spot => (
                                     <button
                                         key={spot.spot_id}
+                                        type="button" // Garante que não submete o form
                                         onClick={() => handleSpotToggle(spot.spot_id)}
                                         className={`w-full text-left p-3 rounded-md transition-colors text-sm font-semibold ${selectedSpotIds.includes(spot.spot_id) ? 'bg-cyan-500 text-white' : 'bg-slate-700 hover:bg-slate-600'}`}>
                                         {spot.name}
@@ -85,6 +89,7 @@ const OnboardingPage: React.FC = () => {
                     {error && <p className="text-red-400 text-center">{error}</p>}
 
                     <button
+                        type="button" // Garante que não submete o form nativamente
                         onClick={handleFinish}
                         disabled={isSaving || isLoadingSpots || selectedSpotIds.length === 0}
                         className="w-full bg-cyan-500 text-white font-bold py-4 rounded-lg hover:bg-cyan-600 transition-all disabled:bg-slate-600 disabled:cursor-not-allowed">

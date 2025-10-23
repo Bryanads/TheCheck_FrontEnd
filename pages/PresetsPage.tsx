@@ -1,8 +1,10 @@
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-70d5044f5e0f688356f30139a56fecb4fa483931/pages/PresetsPage.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { usePresets, useSpots, useCreatePreset, useUpdatePreset, useDeletePreset } from '../hooks';
 import { Preset, Spot, PresetCreate, PresetUpdate } from '../types';
 import { CogsIcon, PlusIcon, TrashIcon, EditIcon } from '../components/icons';
-import { toUTCTime, toLocalTime } from '../utils/utils';
+// ATUALIZADO: Importa formatLocalTimeForAPI em vez de toUTCTime
+import { formatLocalTimeForAPI, toLocalTime } from '../utils/utils';
 
 const MAX_DAY_OFFSET = 6;
 
@@ -26,7 +28,7 @@ const PresetForm: React.FC<{
     const handleSpotToggle = (spotId: number) => {
         setSelectedSpotIds(prev => prev.includes(spotId) ? prev.filter(id => id !== spotId) : [...prev, spotId]);
     };
-    
+
     const handleDayTypeChange = (type: 'offsets' | 'weekdays') => {
         setDaySelectionType(type);
         setDaySelectionValues(type === 'offsets' ? [0] : []);
@@ -50,13 +52,14 @@ const PresetForm: React.FC<{
         if (!name.trim()) { setError("O nome do preset é obrigatório."); return; }
         if (selectedSpotIds.length === 0) { setError("Selecione pelo menos um spot."); return; }
         if (daySelectionValues.length === 0) { setError("Selecione pelo menos um dia."); return; }
-        
+
         setIsSaving(true);
         const data = {
             name,
             spot_ids: selectedSpotIds,
-            start_time: toUTCTime(startTime),
-            end_time: toUTCTime(endTime),
+            // ATUALIZADO: Usa formatLocalTimeForAPI
+            start_time: formatLocalTimeForAPI(startTime),
+            end_time: formatLocalTimeForAPI(endTime),
             day_selection_type: daySelectionType,
             day_selection_values: daySelectionValues,
             is_default: isDefault,
@@ -144,11 +147,8 @@ const PresetsPage: React.FC = () => {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [currentPreset, setCurrentPreset] = useState<Partial<Preset> | null>(null);
 
-    // LÓGICA PARA ENCONTRAR O PRESET INICIAL (COM MENOR ID)
-    const initialPresetId = useMemo(() => {
-        if (!presets || presets.length === 0) return null;
-        return Math.min(...presets.map(p => p.preset_id));
-    }, [presets]);
+    // LÓGICA ANTIGA PARA ENCONTRAR O PRESET INICIAL (COM MENOR ID) - REMOVIDA
+    // const initialPresetId = useMemo(() => { ... }, [presets]);
 
     const handleSave = async (presetData: PresetCreate | PresetUpdate, presetId?: number) => {
         if (presetId) {
@@ -165,7 +165,7 @@ const PresetsPage: React.FC = () => {
             refetch();
         }
     };
-    
+
     const handleSetDefault = async (preset: Preset) => {
         if(preset.is_default) return;
         const currentDefault = presets?.find(p => p.is_default);
@@ -190,7 +190,10 @@ const PresetsPage: React.FC = () => {
             </div>
             <div className="space-y-4">
                 {presets?.map(preset => {
-                    const isInitialPreset = preset.preset_id === initialPresetId;
+                    // ATUALIZADO: A regra agora é: não pode deletar se for o ÚNICO preset E for o padrão.
+                    const isOnlyDefaultPreset = preset.is_default && presets.length === 1;
+                    // const isInitialPreset = preset.preset_id === initialPresetId; // Lógica antiga removida
+
                     return (
                         <div key={preset.preset_id} className="bg-slate-800 rounded-lg p-4 flex justify-between items-center shadow-md">
                             <div>
@@ -202,13 +205,14 @@ const PresetsPage: React.FC = () => {
                             <div className="flex items-center space-x-4">
                                 <button onClick={() => handleSetDefault(preset)} disabled={preset.is_default} className="text-sm font-semibold disabled:text-yellow-400 text-slate-400 hover:text-yellow-400 disabled:cursor-not-allowed">{preset.is_default ? 'Padrão' : 'Tornar Padrão'}</button>
                                 <button onClick={() => { setCurrentPreset(preset); setIsFormOpen(true); }} className="p-2 text-slate-400 hover:text-white"><EditIcon/></button>
-                                
-                                {/* BOTÃO DE DELETAR COM A TRAVA */}
-                                <button 
-                                    onClick={() => handleDelete(preset.preset_id)} 
-                                    disabled={isInitialPreset}
+
+                                {/* BOTÃO DE DELETAR COM A NOVA TRAVA */}
+                                <button
+                                    onClick={() => handleDelete(preset.preset_id)}
+                                    // ATUALIZADO: Alteração na condição disabled:
+                                    disabled={isOnlyDefaultPreset}
                                     className="p-2 text-slate-400 hover:text-red-500 disabled:text-slate-600 disabled:cursor-not-allowed"
-                                    title={isInitialPreset ? "O preset inicial não pode ser apagado." : "Deletar preset"}
+                                    title={isOnlyDefaultPreset ? "Você não pode apagar seu único preset padrão." : "Deletar preset"}
                                 >
                                     <TrashIcon/>
                                 </button>

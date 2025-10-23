@@ -1,9 +1,9 @@
-// src/pages/RecommendationsPage.tsx
+// bryanads/thecheck_frontend/TheCheck_FrontEnd-70d5044f5e0f688356f30139a56fecb4fa483931/pages/RecommendationsPage.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePresets, useRecommendations } from '../hooks';
 import * as api from '../services/api';
-import { RecommendationRequest, SpotDailySummary } from '../types';
+import { RecommendationRequest, SpotDailySummary, DailyRecommendation } from '../types'; // Adicionado DailyRecommendation
 import { RecommendationView } from '../components/recommendation/RecommendationView';
 import { DashboardHighlight } from '../components/recommendation/DashboardHighlight';
 import { QuickFilters, QuickFilterOption } from '../components/recommendation/QuickFilters';
@@ -26,8 +26,7 @@ const RecommendationsPage: React.FC = () => {
             let request: RecommendationRequest;
             const filterKey = activeQuickFilter;
 
-            // Para 'Hoje' e 'Amanhã', a requisição é super simples, focada no cache.
-            // A API vai inferir o resto, mas enviamos dados mínimos para consistência.
+            // Para 'Hoje' e 'Amanhã', a requisição é focada no cache.
             if (filterKey === 'today' || filterKey === 'tomorrow') {
                 request = {
                     cache_key: filterKey,
@@ -38,7 +37,6 @@ const RecommendationsPage: React.FC = () => {
                 };
             } else {
                 // Para o preset padrão, enviamos a requisição completa.
-                // Isso permite que a API use o cache (se a chave bater) ou calcule em tempo real como fallback.
                 request = {
                     cache_key: defaultPreset.name,
                     spot_ids: defaultPreset.spot_ids,
@@ -49,40 +47,56 @@ const RecommendationsPage: React.FC = () => {
 
             setFilters(request);
         }
-    }, [defaultPreset, activeQuickFilter]); // Roda sempre que o preset ou o filtro ativo mudar
+    }, [defaultPreset, activeQuickFilter]);
 
+    // ATUALIZADO: Lógica simplificada no useMemo
     const { topRecommendation, futureRecommendations } = useMemo(() => {
-        if (!recommendations) return { topRecommendation: null, futureRecommendations: [] };
-
-        const now_utc_timestamp = Date.now();
-        let topRec: SpotDailySummary | null = null;
-
-        const filteredDays = recommendations.map(day => {
-            let spotsForDay = day.ranked_spots;
-
-            // Aplica o filtro de tempo apenas para dias futuros, não para "Hoje"
-            if (activeQuickFilter !== 'today') {
-                spotsForDay = day.ranked_spots.filter(spot => new Date(spot.best_hour_utc).getTime() > now_utc_timestamp);
-            }
-
-            // A lógica para o card de destaque ainda tenta priorizar a melhor onda futura
-            const futureSpotsForTopRec = day.ranked_spots.filter(spot => new Date(spot.best_hour_utc).getTime() > now_utc_timestamp);
-            if (futureSpotsForTopRec.length > 0) {
-                if (!topRec || futureSpotsForTopRec[0].best_overall_score > topRec.best_overall_score) {
-                    topRec = futureSpotsForTopRec[0];
-                }
-            }
-
-            return { ...day, ranked_spots: spotsForDay };
-        }).filter(day => day.ranked_spots.length > 0);
-
-        // Se nenhuma onda futura foi encontrada, exibe a melhor de hoje no card, mesmo que já tenha passado
-        if (!topRec && filteredDays.length > 0 && filteredDays[0].ranked_spots.length > 0) {
-            topRec = filteredDays[0].ranked_spots[0];
+        if (!recommendations || recommendations.length === 0) {
+            return { topRecommendation: null, futureRecommendations: [] };
         }
 
-        return { topRecommendation: topRec, futureRecommendations: filteredDays };
-    }, [recommendations, activeQuickFilter]);
+        const nowTimestamp = Date.now();
+        let firstFutureSpot: SpotDailySummary | null = null;
+        const processedFutureRecommendations: DailyRecommendation[] = [];
+
+        // Encontra a primeira melhor recomendação futura para o card de destaque
+        for (const day of recommendations) {
+            if (day.ranked_spots && day.ranked_spots.length > 0) {
+                for (const spot of day.ranked_spots) {
+                    if (new Date(spot.best_hour_utc).getTime() > nowTimestamp) {
+                        // Compara com a melhor futura já encontrada (se houver)
+                        if (!firstFutureSpot || spot.best_overall_score > firstFutureSpot.best_overall_score) {
+                           firstFutureSpot = spot;
+                        }
+                         // Uma vez encontrada a melhor futura do dia, podemos parar de procurar *neste dia específico*
+                         // break; // Opcional: Se só quisermos a primeira hora boa do dia
+                    }
+                }
+            }
+            // Continuamos buscando em outros dias por uma pontuação potencialmente ainda maior
+        }
+
+        // Filtra as recomendações para a lista (removendo spots passados, exceto para "Hoje")
+        recommendations.forEach(day => {
+            // Garante que ranked_spots existe antes de filtrar
+             if (day.ranked_spots) {
+                const filteredSpots = day.ranked_spots.filter(spot =>
+                    activeQuickFilter === 'today' || new Date(spot.best_hour_utc).getTime() > nowTimestamp
+                );
+                if (filteredSpots.length > 0) {
+                    processedFutureRecommendations.push({ ...day, ranked_spots: filteredSpots });
+                }
+             }
+        });
+
+        // Define a topRecommendation: a melhor futura encontrada, ou a melhor do primeiro dia se nenhuma futura existir.
+        const finalTopRecommendation = firstFutureSpot || recommendations[0]?.ranked_spots?.[0] || null;
+
+        return {
+            topRecommendation: finalTopRecommendation,
+            futureRecommendations: processedFutureRecommendations
+        };
+    }, [recommendations, activeQuickFilter]); // Dependências corretas
 
     // Efeito para pré-carregar os dados do gráfico para a melhor recomendação
     useEffect(() => {
@@ -90,6 +104,8 @@ const RecommendationsPage: React.FC = () => {
             queryClient.prefetchQuery({
                 queryKey: ['forecast', topRecommendation.spot_id],
                 queryFn: () => api.getSpotForecast(topRecommendation.spot_id),
+                // Adicionar staleTime para evitar refetch imediato se os dados já estiverem frescos
+                staleTime: 5 * 60 * 1000 // 5 minutos
             });
         }
     }, [topRecommendation, queryClient]);

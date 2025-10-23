@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Spot, Preset, RecommendationRequest } from '../../types';
 import { FilterIcon, ChevronDownIcon, CheckIcon } from '../icons';
-import { toUTCTime, toLocalTime } from '../../utils/utils';
+// ATUALIZADO: Importa formatLocalTimeForAPI em vez de toUTCTime
+import { formatLocalTimeForAPI, toLocalTime } from '../../utils/utils';
 
 interface RecommendationFilterProps {
     spots: Spot[];
@@ -17,7 +18,7 @@ const MAX_DAY_OFFSET = 6;
 export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spots, presets, onSearch, loading, activePresetName }) => {
     const [isFilterVisible, setIsFilterVisible] = useState(false);
     const [activeTab, setActiveTab] = useState<'preset' | 'custom'>('preset');
-    
+
     // State para o filtro customizado
     const [selectedSpotIds, setSelectedSpotIds] = useState<number[]>([]);
     const [daySelectionType, setDaySelectionType] = useState<'offsets' | 'weekdays'>('offsets');
@@ -35,7 +36,8 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
             setStartTime(toLocalTime(defaultPreset.start_time));
             setEndTime(toLocalTime(defaultPreset.end_time));
         }
-    }, [presets]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [presets]); // Dependência apenas em presets para setar o estado inicial
 
     const handlePresetSearch = (preset: Preset) => {
         const request: RecommendationRequest = {
@@ -45,9 +47,11 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                 values: preset.day_selection_values
             },
             time_window: {
-                start: preset.start_time,
-                end: preset.end_time
-            }
+                start: preset.start_time, // Já está em UTC "HH:MM:SS" vindo da API
+                end: preset.end_time     // Já está em UTC "HH:MM:SS" vindo da API
+            },
+            // Adiciona cache_key para usar o cache da API se possível
+            cache_key: preset.name
         };
         onSearch(request);
         setIsFilterVisible(false);
@@ -62,15 +66,17 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                     values: daySelectionValues,
                 },
                 time_window: {
-                    start: toUTCTime(startTime),
-                    end: toUTCTime(endTime),
+                    // ATUALIZADO: Usa formatLocalTimeForAPI
+                    start: formatLocalTimeForAPI(startTime),
+                    end: formatLocalTimeForAPI(endTime),
                 },
+                // Não envia cache_key para forçar cálculo novo
             };
             onSearch(request);
             setIsFilterVisible(false);
         }
     };
-    
+
     const handleDayTypeChange = (type: 'offsets' | 'weekdays') => {
         setDaySelectionType(type);
         setDaySelectionValues(type === 'offsets' ? [0] : []);
@@ -84,7 +90,7 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
 
     const handleWeekdayToggle = (dayIndex: number) => {
         setDaySelectionValues(prev =>
-            prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]
+            prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex].sort() // Mantém ordenado
         );
     };
 
@@ -100,7 +106,7 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                 </div>
                 <ChevronDownIcon className={`w-6 h-6 text-slate-400 transition-transform duration-300 ${isFilterVisible ? 'rotate-180' : ''}`} />
             </div>
-            
+
             {isFilterVisible && (
                 <div className="p-6 pt-0">
                     <div className="flex border-b border-slate-700">
@@ -128,13 +134,13 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                                 <label className="block text-slate-300 font-medium mb-2">Spots de Surf</label>
                                 <div className="max-h-32 overflow-y-auto bg-slate-700 p-2 rounded-lg grid grid-cols-2 gap-2">
                                     {spots.map(spot => (
-                                        <button key={spot.spot_id} onClick={() => setSelectedSpotIds(prev => prev.includes(spot.spot_id) ? prev.filter(id => id !== spot.spot_id) : [...prev, spot.spot_id])} className={`w-full text-left p-2 rounded-md transition-colors ${selectedSpotIds.includes(spot.spot_id) ? 'bg-cyan-500 text-white font-bold' : 'hover:bg-slate-600'}`}>
+                                        <button key={spot.spot_id} type="button" onClick={() => setSelectedSpotIds(prev => prev.includes(spot.spot_id) ? prev.filter(id => id !== spot.spot_id) : [...prev, spot.spot_id])} className={`w-full text-left p-2 rounded-md transition-colors ${selectedSpotIds.includes(spot.spot_id) ? 'bg-cyan-500 text-white font-bold' : 'hover:bg-slate-600'}`}>
                                             {spot.name}
                                         </button>
                                     ))}
                                 </div>
                             </div>
-                            
+
                             <div>
                                 <label className="block text-slate-300 font-medium mb-2">Dias para o Check</label>
                                 <div className="flex bg-slate-700 rounded-lg p-1">
@@ -167,7 +173,7 @@ export const RecommendationFilter: React.FC<RecommendationFilterProps> = ({ spot
                             </div>
 
                             <div className="mt-6 text-right">
-                                <button onClick={handleCustomSearchClick} disabled={loading || selectedSpotIds.length === 0} className="bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-600 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center float-right">
+                                <button onClick={handleCustomSearchClick} disabled={loading || selectedSpotIds.length === 0 || daySelectionValues.length === 0} className="bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-600 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center float-right">
                                     <CheckIcon className="mr-2"/>
                                     Obter Recomendações
                                 </button>
